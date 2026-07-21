@@ -31,6 +31,10 @@ Prior to coding, feed the LLM:
 - `progress.md`
 - The document for the current phase you are working on, and documents for any previous phases 
 
+### Code Generation Rules
+- Testing must always be written before implementation 
+- All tests must "clean" the database by themselves. If the test works with the database, any entries that are added as part of the test must be removed within the same test. 
+
 
 ## Phases
 We will eleborate more on this in separate documents. 
