@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+sib-api-v3-sdk
+pytest
+pytest-asyncio
