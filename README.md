@@ -16,6 +16,14 @@ Instead of jumping between different interfaces and managing fragmented storage 
 
 ## Architecture 
 
+```mermaid
+flowchart TD
+    A[Frontend: React/Vite on Vercel] --> B[Backend: FastAPI on Render]
+    B --> C[Google Drive API]
+    B --> D[Microsoft Graph Files API]
+    B --> E[PostgreSQL on Supabase]
+``` 
+
 
 ## Context Protocol
 Prior to coding, feed the LLM:
