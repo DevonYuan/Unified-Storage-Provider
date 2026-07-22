@@ -9,12 +9,12 @@ def test_email_verification_success():
     """Test successful email verification with valid token."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
         # First register a user
-        with patch('app.email_service.send_verification_email') as mock_send:
+        with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
             mock_send.return_value = True
             register_response = client.post(
                 "/api/v1/register",

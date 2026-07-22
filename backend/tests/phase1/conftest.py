@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # Add the backend directory to the path so we can import app modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # We will import the app and database modules once they are created
 # For now, we define placeholder fixtures that will be replaced

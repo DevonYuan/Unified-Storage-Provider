@@ -9,12 +9,12 @@ def test_login_success():
     """Test successful login with valid credentials."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
         # First register a user
-        with patch('app.email_service.send_verification_email') as mock_send:
+        with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
             mock_send.return_value = True
             register_response = client.post(
                 "/api/v1/register",
@@ -26,8 +26,17 @@ def test_login_success():
             assert register_response.status_code == 201
 
             # Verify email (mock the token verification)
-            with patch('app.auth_service.verify_token') as mock_verify:
-                mock_verify.return_value = {"user_id": 1, "email": "test@example.com"}
+            with patch('app.api.v1.auth.db.query') as mock_db:
+                # Mocking the DB query to simulate a valid token find
+                mock_user = MagicMock()
+                mock_user.email = "test@example.com"
+                mock_user.id = 1
+
+                mock_verification = MagicMock()
+                mock_verification.user = mock_user
+                mock_verification.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+
+                mock_db.return_value.filter.return_value.first.return_value = mock_verification
                 client.get("/api/v1/verify-email?token=dummy")
 
                 # Now login
