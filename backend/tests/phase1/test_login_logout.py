@@ -11,7 +11,17 @@ def test_login_success():
     try:
         from app.main import app
         from fastapi.testclient import TestClient
+        from app.db.session import SessionLocal
+        from app.models.user import User
+
         client = TestClient(app)
+        db = SessionLocal()
+
+        # Clean up any existing test user
+        existing_user = db.query(User).filter(User.email == "test@example.com").first()
+        if existing_user:
+            db.delete(existing_user)
+            db.commit()
 
         # First register a user
         with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
@@ -55,6 +65,14 @@ def test_login_success():
                 assert data["token_type"] == "bearer"
                 assert "user" in data
                 assert data["user"]["email"] == "test@example.com"
+
+        # Clean up test user
+        test_user = db.query(User).filter(User.email == "test@example.com").first()
+        if test_user:
+            db.delete(test_user)
+            db.commit()
+
+        db.close()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoints /api/v1/register, /api/v1/verify-email, or /api/v1/login not available"
@@ -63,7 +81,7 @@ def test_login_invalid_credentials():
     """Test login fails with invalid credentials."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
@@ -86,12 +104,22 @@ def test_login_unverified_email():
     """Test login fails for unverified email."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
+        from app.db.session import SessionLocal
+        from app.models.user import User
+
         client = TestClient(app)
+        db = SessionLocal()
+
+        # Clean up any existing test user
+        existing_user = db.query(User).filter(User.email == "unverified@example.com").first()
+        if existing_user:
+            db.delete(existing_user)
+            db.commit()
 
         # Register a user but don't verify email
-        with patch('app.email_service.send_verification_email') as mock_send:
+        with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
             mock_send.return_value = True
             client.post(
                 "/api/v1/register",
@@ -112,6 +140,14 @@ def test_login_unverified_email():
             # These assertions will fail until endpoints are implemented
             assert login_response.status_code == 401
             assert "unverified" in login_response.json()["detail"].lower()
+
+        # Clean up test user
+        test_user = db.query(User).filter(User.email == "unverified@example.com").first()
+        if test_user:
+            db.delete(test_user)
+            db.commit()
+
+        db.close()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoints /api/v1/register or /api/v1/login not available"
@@ -120,12 +156,22 @@ def test_logout():
     """Test logout endpoint clears authentication."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
+        from app.db.session import SessionLocal
+        from app.models.user import User
+
         client = TestClient(app)
+        db = SessionLocal()
+
+        # Clean up any existing test user
+        existing_user = db.query(User).filter(User.email == "test@example.com").first()
+        if existing_user:
+            db.delete(existing_user)
+            db.commit()
 
         # First login to get a token
-        with patch('app.email_service.send_verification_email') as mock_send:
+        with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
             mock_send.return_value = True
             register_response = client.post(
                 "/api/v1/register",
@@ -136,7 +182,7 @@ def test_logout():
             )
             assert register_response.status_code == 201
 
-            with patch('app.auth_service.verify_token') as mock_verify:
+            with patch('app.core.security.decode_access_token') as mock_verify:
                 mock_verify.return_value = {"user_id": 1, "email": "test@example.com"}
                 client.get("/api/v1/verify-email?token=dummy")
 
@@ -160,6 +206,14 @@ def test_logout():
                 # These assertions will fail until endpoints are implemented
                 assert logout_response.status_code == 200
                 assert "logged out" in logout_response.json()["message"].lower()
+
+        # Clean up test user
+        test_user = db.query(User).filter(User.email == "test@example.com").first()
+        if test_user:
+            db.delete(test_user)
+            db.commit()
+
+        db.close()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoints /api/v1/register, /api/v1/verify-email, /api/v1/login, or /api/v1/logout not available"

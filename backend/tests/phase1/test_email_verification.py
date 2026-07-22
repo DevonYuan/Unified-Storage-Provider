@@ -11,7 +11,17 @@ def test_email_verification_success():
     try:
         from app.main import app
         from fastapi.testclient import TestClient
+        from app.db.session import SessionLocal
+        from app.models.user import User
+
         client = TestClient(app)
+        db = SessionLocal()
+
+        # Clean up any existing test user
+        existing_user = db.query(User).filter(User.email == "test@example.com").first()
+        if existing_user:
+            db.delete(existing_user)
+            db.commit()
 
         # First register a user
         with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
@@ -37,6 +47,14 @@ def test_email_verification_success():
             data = response.json()
             assert data["message"] == "Email verified successfully"
             assert data["email_verified"] == True
+
+        # Clean up test user
+        test_user = db.query(User).filter(User.email == "test@example.com").first()
+        if test_user:
+            db.delete(test_user)
+            db.commit()
+
+        db.close()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoints /api/v1/register or /api/v1/verify-email not available"
@@ -45,7 +63,7 @@ def test_email_verification_invalid_token():
     """Test email verification fails with invalid token."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
@@ -62,7 +80,7 @@ def test_email_verification_expired_token():
     """Test email verification fails with expired token."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
         client = TestClient(app)
 
@@ -79,12 +97,22 @@ def test_resend_verification_email():
     """Test resending verification email."""
     # This test should fail until the app is implemented
     try:
-        from main import app
+        from app.main import app
         from fastapi.testclient import TestClient
+        from app.db.session import SessionLocal
+        from app.models.user import User
+
         client = TestClient(app)
+        db = SessionLocal()
+
+        # Clean up any existing test user
+        existing_user = db.query(User).filter(User.email == "test@example.com").first()
+        if existing_user:
+            db.delete(existing_user)
+            db.commit()
 
         # Register unverified user
-        with patch('app.email_service.send_verification_email') as mock_send:
+        with patch('app.services.email_service.email_service.send_verification_email') as mock_send:
             mock_send.return_value = True
             client.post(
                 "/api/v1/register",
@@ -100,6 +128,14 @@ def test_resend_verification_email():
 
             # Verify email service was called
             assert mock_send.called
+
+        # Clean up test user
+        test_user = db.query(User).filter(User.email == "test@example.com").first()
+        if test_user:
+            db.delete(test_user)
+            db.commit()
+
+        db.close()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoints /api/v1/register or /api/v1/resend-verification not available"

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import secrets
+from pydantic import EmailStr
 from typing import Any
 
 from ...db.session import get_db
@@ -13,13 +14,39 @@ from ...api.deps import get_current_user
 
 router = APIRouter()
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(payload: dict, db: Session = Depends(get_db)):
-    email = payload.get("email")
-    password = payload.get("password")
 
-    if not email or not password:
-        raise HTTPException(status_code=422, detail="Email and password are required")
+class RegisterRequest:
+    def __init__(self, email: EmailStr, password: str):
+        self.email = email
+        self.password = password
+
+
+class LoginRequest:
+    def __init__(self, email: EmailStr, password: str):
+        self.email = email
+        self.password = password
+
+
+class ResendVerificationRequest:
+    def __init__(self, email: EmailStr):
+        self.email = email
+
+
+class ForgotPasswordRequest:
+    def __init__(self, email: EmailStr):
+        self.email = email
+
+
+class ResetPasswordRequest:
+    def __init__(self, token: str, password: str):
+        self.token = token
+        self.password = password
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    email = str(request.email)
+    password = request.password
 
     if len(password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters long")
@@ -52,11 +79,13 @@ def register(payload: dict, db: Session = Depends(get_db)):
         "email_verified": new_user.email_verified
     }
 
-@router.post("/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not user or not security.verify_password(form_data.password, user.hashed_password):
+@router.post("/login")
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    email = str(request.email)
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user or not security.verify_password(request.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -76,11 +105,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "user": {"id": user.id, "email": user.email}
     }
 
+
 @router.post("/logout")
 def logout(current_user: User = Depends(get_current_user)):
     # JWT is stateless, so we just return success.
     # Client should delete the token.
     return {"message": "Successfully logged out"}
+
 
 @router.get("/verify-email")
 def verify_email(token: str, db: Session = Depends(get_db)):
@@ -99,11 +130,10 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
     return {"message": "Email verified successfully", "email_verified": True}
 
+
 @router.post("/resend-verification")
-def resend_verification(payload: dict, db: Session = Depends(get_db)):
-    email = payload.get("email")
-    if not email:
-        raise HTTPException(status_code=400, detail="Email is required")
+def resend_verification(request: ResendVerificationRequest, db: Session = Depends(get_db)):
+    email = str(request.email)
 
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -126,9 +156,10 @@ def resend_verification(payload: dict, db: Session = Depends(get_db)):
     email_service.send_verification_email(email, token)
     return {"message": "Verification email sent"}
 
+
 @router.post("/forgot-password")
-def forgot_password(payload: dict, db: Session = Depends(get_db)):
-    email = payload.get("email")
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email = str(request.email)
     user = db.query(User).filter(User.email == email).first()
 
     if not user:
@@ -138,13 +169,6 @@ def forgot_password(payload: dict, db: Session = Depends(get_db)):
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
-    # We can reuse the email_verifications table for reset tokens
-    # or use a dedicated table. For Phase 1, let's use a separate logic
-    # or just use the same table if we distinguish tokens.
-    # Actually, let's just create a reset token in the DB.
-    # For simplicity in Phase 1, I'll use the email_verifications table
-    # but perhaps with a different expiration.
-
     verification = EmailVerification(user_id=user.id, token=token, expires_at=expires_at)
     db.add(verification)
     db.commit()
@@ -152,10 +176,11 @@ def forgot_password(payload: dict, db: Session = Depends(get_db)):
     email_service.send_password_reset_email(email, token)
     return {"message": "Password reset email sent"}
 
+
 @router.post("/reset-password")
-def reset_password(payload: dict, db: Session = Depends(get_db)):
-    token = payload.get("token")
-    new_password = payload.get("password")
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    token = request.token
+    new_password = request.password
 
     if not token or not new_password:
         raise HTTPException(status_code=400, detail="Token and password are required")
