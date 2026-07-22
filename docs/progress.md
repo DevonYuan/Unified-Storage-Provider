@@ -4,3 +4,7 @@ July 21, 2026:
 - Tables are now created in the Supabase DB. (Task 1 complete)
 - Added BREVO_API_KEY (For sending emails) and DATABASE_URL (For working with the DB via code) in the .env file 
 - Added tests but I need to make sure that they fail (Since no implementation has been done yet)
+
+July 22, 2026:
+- I verified that the backend tests run and fail 
+- Still unable to run the frontend tests because I am missing the script "test". 

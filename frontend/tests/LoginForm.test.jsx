@@ -1,5 +1,5 @@
 import { render, screen, cleanup } from '@testing-library/react'
-import userEvent from '@testing-library/user-effect'
+import userEvent from '@testing-library/user-event'
 import { LoginForm } from '../src/components/LoginForm'
 
 describe('LoginForm', () => {
