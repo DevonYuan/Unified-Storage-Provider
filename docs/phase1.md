@@ -29,6 +29,8 @@ In this phase, we will implement a basic working web app. We will interact with 
 
 ### 3. Implement the backend and frontend
 - This one is self-explanatory. Tests MUST be written BEFORE this happens. 
+- To run the backend tests added in task 2: Run with "pytest tests/phase1/ -v". Prior to this, you must install the depencies listed in requirements.txt (Which you can do by running "pip install -r requirements.txt")
+- To run the frontend tests added task 2: Run with "npm test" or "yarn test". Prior to this, you must install the necessary dependencies (Which you can do by running "npm install" or "yarn install.")
 
 **Acceptance Criteria:** 
 - Implement user registration with email verification via Brevo

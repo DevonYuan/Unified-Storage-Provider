@@ -1,5 +1,6 @@
 # Environment variables 
 .env 
 
-# Tests
-tests/__pycache__/ 
+# Caches 
+.pytest_cache/
+tests/phase1/__pycache__/
