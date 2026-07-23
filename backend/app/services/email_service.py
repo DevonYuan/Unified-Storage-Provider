@@ -15,7 +15,7 @@ class EmailService:
         self.api_instance = sib_api_v3_sdk.TransactionalEmailsApi(self.api_client)
 
     def send_verification_email(self, email: str, token: str) -> None:
-        verification_url = f"http://localhost:8000/api/v1/verify-email?token={token}"
+        verification_url = f"http://localhost:3000/verify-email?token={token}"
         message = f"Welcome to OmniDrive! Please verify your email by clicking <a href=\"{verification_url}\">here</a>."
         self._send_email(email, "Verify your OmniDrive Account", message)
 
