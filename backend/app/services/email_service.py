@@ -15,13 +15,13 @@ class EmailService:
         self.api_instance = sib_api_v3_sdk.TransactionalEmailsApi(self.api_client)
 
     def send_verification_email(self, email: str, token: str) -> None:
-        verification_url = f"http://localhost:3000/verify-email?token={token}"
+        verification_url = f"http://localhost:5173/verify-email?token={token}"
         message = f"Welcome to OmniDrive! Please verify your email by clicking <a href=\"{verification_url}\">here</a>."
         self._send_email(email, "Verify your OmniDrive Account", message)
 
     def send_password_reset_email(self, email: str, token: str) -> None:
         """Send an email with a link to reset the user's password."""
-        reset_url = f"http://localhost:3000/reset-password?token={token}"
+        reset_url = f"http://localhost:5173/reset-password?token={token}"
         message = f"You requested a password reset for your OmniDrive account. Click <a href=\"{reset_url}\">here</a> to reset your password."
         return self._send_email(email, "Reset your OmniDrive Password", message)
 
