@@ -50,7 +50,7 @@ describe('LoginForm', () => {
   })
 
   it('calls onLogin with valid credentials', async () => {
-    const onLogin = jest.fn()
+    const onLogin = vi.fn()
     render(<LoginForm onLogin={onLogin} />)
 
     const emailInput = screen.getByLabelText(/email/i)
