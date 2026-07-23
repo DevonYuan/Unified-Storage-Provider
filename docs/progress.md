@@ -18,4 +18,7 @@ July 22, 2026:
 - Update: Removed verification_token from backend register response for security 
 - Update: The email message shows up in the UI but it is still not sending 
 - Update: Fixed email syntax to include clickable hyperlinks instead of plain URLs (July 23, 2026)
-- Update: Updated email verification links to point to frontend route instead of backend API (July 23, 2026) 
+
+July 23, 2026 
+- Update: Updated email verification links to point to frontend route instead of backend API 
+- Need to figure out how to create a page that the user reaches when they verify their email (currently gives the mesage 404 / page not found)
