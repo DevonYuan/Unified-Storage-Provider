@@ -1,6 +1,3 @@
-# Environment variables 
-.env 
-
 # Caches 
 .pytest_cache/
 tests/phase1/__pycache__/

@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-# Try to find .env file in backend directory or parent directories
-env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+# Try to find .env file in project root or parent directories
+env_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
 if os.path.exists(env_path):
     settings = Settings(_env_file=env_path)
 else:

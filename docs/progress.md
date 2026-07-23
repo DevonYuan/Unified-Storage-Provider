@@ -21,5 +21,6 @@ July 22, 2026:
 
 July 23, 2026 
 - Update: Updated email verification links to point to frontend route instead of backend API 
-- Need to figure out how to create a page that the user reaches when they verify their email (currently gives the mesage 404 / page not found
+- Need to figure out how to create a page that the user reaches when they verify their email (currently gives the mesage 404 / page not foun)
 - Phase 1 is complete 
+- I should move around the .env file so that it is in the root directory. 
