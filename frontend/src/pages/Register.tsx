@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../api/auth.service';
 
 const Register: React.FC = () => {
     const navigate = useNavigate();
+    const [successMessage, setSuccessMessage] = useState('');
     const { register, handleSubmit, formState: { errors } } = useForm({
         defaultValues: {
             email: '',
@@ -16,8 +17,7 @@ const Register: React.FC = () => {
     const onSubmit = async (data: any) => {
         try {
             await authService.register(data.email, data.password);
-            alert('Registration successful! Please check your email to verify your account.');
-            navigate('/login');
+            setSuccessMessage('Registration successful! A verification link has been sent to your email address.');
         } catch (error: any) {
             alert(error.response?.data?.detail || 'Registration failed');
         }
@@ -65,7 +65,13 @@ const Register: React.FC = () => {
                     />
                     {errors.confirmPassword && <span style={{ color: 'red', fontSize: '0.8rem' }}>{errors.confirmPassword.message as string}</span>}
                 </div>
-                <button type="submit" style={{ width: '100%', padding: '0.5rem' }}>Register</button>
+                {successMessage && (
+                    <p style={{ color: 'green', marginBottom: '1rem', textAlign: 'center' }}>{successMessage}</p>
+                )}
+                <button type="submit" style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}>Register</button>
+                <p style={{ textAlign: 'center' }}>
+                    Already have an account? <Link to="/login">Log in</Link>
+                </p>
             </form>
         </div>
     );

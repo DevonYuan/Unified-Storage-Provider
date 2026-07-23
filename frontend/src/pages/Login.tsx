@@ -1,6 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../api/auth.service';
 import { useAuth } from '../context/AuthContext';
 
@@ -47,7 +47,10 @@ const Login: React.FC = () => {
                     />
                     {errors.password && <span style={{ color: 'red', fontSize: '0.8rem' }}>{errors.password.message as string}</span>}
                 </div>
-                <button type="submit" style={{ width: '100%', padding: '0.5rem' }}>Sign In</button>
+                <button type="submit" style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}>Sign In</button>
+                <p style={{ textAlign: 'center' }}>
+                    Don't have an account? <Link to="/register">Sign up</Link>
+                </p>
             </form>
         </div>
     );

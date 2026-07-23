@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Any
+import logging
 
 from ...db.session import get_db
 from ...models.user import User, EmailVerification
@@ -12,6 +13,7 @@ from ...core import security
 from ...services.email_service import email_service
 from ...api.deps import get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -70,12 +72,14 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
 
     # Send verification email
-    email_service.send_verification_email(email, token)
+    email_sent = email_service.send_verification_email(email, token)
+    logger.info(f"Verification email sent to {email}: {email_sent}")
 
     return {
         "id": new_user.id,
         "email": new_user.email,
-        "email_verified": new_user.email_verified
+        "email_verified": new_user.email_verified,
+        "email_sent": email_sent
     }
 
 

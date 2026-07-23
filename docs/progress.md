@@ -12,3 +12,7 @@ July 22, 2026:
 - A backend is added, but I am now working on debugging the tests. Have not ran the app itself yet, but I need to figure out the ModuleError for the backend tests. 
 - Update: The ModuleError is removed but the backend tests still fail 
 - Update: Frontend tests pass 
+- Update: I can run the app but there is no option to sign up through the UI 
+- Update: The UI signup system sucks
+- Update: Removed dev verification link from frontend Register page and replaced with rendered success message
+- Update: Removed verification_token from backend register response for security 

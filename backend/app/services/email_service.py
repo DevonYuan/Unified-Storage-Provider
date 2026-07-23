@@ -38,10 +38,11 @@ class EmailService:
                 subject=subject,
                 html_content=f"<html><body><p>{content}</p></body></html>",
             )
-            self.api_instance.send_transac_email(send_smtp_email)
+            api_response = self.api_instance.send_transac_email(send_smtp_email)
+            logger.info(f"Email sent successfully to {to_email}. Response: {api_response}")
             return True
-        except ApiException as e:
-            logger.error(f"Exception when calling TransactionalEmailsApi->send_transac_email: {e}")
+        except Exception as e:
+            logger.error(f"Failed to send email to {to_email}: {e}")
             return False
 
 # Singleton instance

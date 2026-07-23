@@ -22,14 +22,7 @@ export const authService = {
     },
 
     async login(email, password) {
-        // FastAPI OAuth2PasswordRequestForm expects form data, not JSON
-        const formData = new FormData();
-        formData.append('username', email);
-        formData.append('password', password);
-
-        const response = await authApi.post('/login', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const response = await authApi.post('/login', { email, password });
         return response.data;
     },
 
