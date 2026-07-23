@@ -8,8 +8,6 @@ In this phase, we will implement a basic working web app. We will interact with 
 - We will be using an email verification system via Brevo and JWT based authentication. I will manually add the environemnt variables.
 
 **Acceptance Criteria:** 
-- Define database schema for users table with fields: id, email, hashed_password, email_verified, created_at, updated_at
-- Define Brevo email verification table with fields: id, user_id, token, expires_at, created_at
 - Document JWT token structure and expiration times
 - Consider adding fields for OAuth tokens for future Google/OneDrive integration
 - Plan for future expansion to include file metadata tables

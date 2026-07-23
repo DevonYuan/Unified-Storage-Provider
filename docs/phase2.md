@@ -57,4 +57,4 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - Test edge cases like expired tokens, API quota limits, invalid file IDs
 
 The end goal of this, is that there is functionally no difference between using our app, and using Google Drive. <br>
-The work that a user does within this app should reflect in their actual Google Drive account. 
+The work that a user does within this app should reflect in their actual Google Drive account.
