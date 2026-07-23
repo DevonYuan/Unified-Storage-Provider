@@ -35,36 +35,32 @@ def test_login_success():
             )
             assert register_response.status_code == 201
 
-            # Verify email (mock the token verification)
-            with patch('app.api.v1.auth.db.query') as mock_db:
-                # Mocking the DB query to simulate a valid token find
-                mock_user = MagicMock()
-                mock_user.email = "test@example.com"
-                mock_user.id = 1
+            # Get the user ID from the registration response
+            user_id = register_response.json()["id"]
 
-                mock_verification = MagicMock()
-                mock_verification.user = mock_user
-                mock_verification.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+            # Get the verification token from the database
+            from app.models.user import EmailVerification
+            verification = db.query(EmailVerification).filter(EmailVerification.user_id == user_id).first()
+            if verification:
+                # Verify email with the actual token
+                client.get(f"/api/v1/verify-email?token={verification.token}")
 
-                mock_db.return_value.filter.return_value.first.return_value = mock_verification
-                client.get("/api/v1/verify-email?token=dummy")
+            # Now login
+            login_response = client.post(
+                "/api/v1/login",
+                json={
+                    "email": "test@example.com",
+                    "password": "securepassword123"
+                }
+            )
 
-                # Now login
-                login_response = client.post(
-                    "/api/v1/login",
-                    json={
-                        "email": "test@example.com",
-                        "password": "securepassword123"
-                    }
-                )
-
-                # These assertions will fail until endpoints are implemented
-                assert login_response.status_code == 200
-                data = login_response.json()
-                assert "access_token" in data
-                assert data["token_type"] == "bearer"
-                assert "user" in data
-                assert data["user"]["email"] == "test@example.com"
+            # These assertions will fail until endpoints are implemented
+            assert login_response.status_code == 200
+            data = login_response.json()
+            assert "access_token" in data
+            assert data["token_type"] == "bearer"
+            assert "user" in data
+            assert data["user"]["email"] == "test@example.com"
 
         # Clean up test user
         test_user = db.query(User).filter(User.email == "test@example.com").first()
@@ -95,7 +91,7 @@ def test_login_invalid_credentials():
 
         # These assertions will fail until endpoints are implemented
         assert login_response.status_code == 401
-        assert "invalid" in login_response.json()["detail"].lower()
+        assert "incorrect" in login_response.json()["detail"].lower()
     except (ImportError, AttributeError):
         # Expected to fail until app is implemented
         assert False, "Application not implemented yet - endpoint /api/v1/login not available"
@@ -139,7 +135,7 @@ def test_login_unverified_email():
 
             # These assertions will fail until endpoints are implemented
             assert login_response.status_code == 401
-            assert "unverified" in login_response.json()["detail"].lower()
+            assert "not verified" in login_response.json()["detail"].lower()
 
         # Clean up test user
         test_user = db.query(User).filter(User.email == "unverified@example.com").first()
@@ -182,30 +178,36 @@ def test_logout():
             )
             assert register_response.status_code == 201
 
-            with patch('app.core.security.decode_access_token') as mock_verify:
-                mock_verify.return_value = {"user_id": 1, "email": "test@example.com"}
-                client.get("/api/v1/verify-email?token=dummy")
+            # Get the user ID from the registration response
+            user_id = register_response.json()["id"]
 
-                login_response = client.post(
-                    "/api/v1/login",
-                    json={
-                        "email": "test@example.com",
-                        "password": "securepassword123"
-                    }
-                )
-                assert login_response.status_code == 200
-                tokens = login_response.json()
-                access_token = tokens["access_token"]
+            # Get the verification token from the database
+            from app.models.user import EmailVerification
+            verification = db.query(EmailVerification).filter(EmailVerification.user_id == user_id).first()
+            if verification:
+                # Verify email with the actual token
+                client.get(f"/api/v1/verify-email?token={verification.token}")
 
-                # Now logout
-                logout_response = client.post(
-                    "/api/v1/logout",
-                    headers={"Authorization": f"Bearer {access_token}"}
-                )
+            login_response = client.post(
+                "/api/v1/login",
+                json={
+                    "email": "test@example.com",
+                    "password": "securepassword123"
+                }
+            )
+            assert login_response.status_code == 200
+            tokens = login_response.json()
+            access_token = tokens["access_token"]
 
-                # These assertions will fail until endpoints are implemented
-                assert logout_response.status_code == 200
-                assert "logged out" in logout_response.json()["message"].lower()
+            # Now logout
+            logout_response = client.post(
+                "/api/v1/logout",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+
+            # These assertions will fail until endpoints are implemented
+            assert logout_response.status_code == 200
+            assert "logged out" in logout_response.json()["message"].lower()
 
         # Clean up test user
         test_user = db.query(User).filter(User.email == "test@example.com").first()

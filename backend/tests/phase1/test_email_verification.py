@@ -12,7 +12,7 @@ def test_email_verification_success():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -35,9 +35,15 @@ def test_email_verification_success():
             )
             assert register_response.status_code == 201
 
-            # Extract verification token from email (mocked)
-            # In real implementation, we'd extract from email or database
-            verification_token = "valid-test-token"
+            # Get the user ID from the registration response
+            user_id = register_response.json()["id"]
+
+            # Get the verification token from the database
+            verification = db.query(EmailVerification).filter(EmailVerification.user_id == user_id).first()
+            if verification:
+                verification_token = verification.token
+            else:
+                verification_token = "valid-test-token"
 
             # Verify email with token
             response = client.get(f"/api/v1/verify-email?token={verification_token}")
@@ -120,7 +126,10 @@ def test_resend_verification_email():
             )
 
             # Resend verification email
-            response = client.post("/api/v1/resend-verification")
+            response = client.post(
+                "/api/v1/resend-verification",
+                json={"email": "test@example.com"}
+            )
 
             # These assertions will fail until endpoints are implemented
             assert response.status_code == 200

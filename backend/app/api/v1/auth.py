@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 import secrets
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Any
 
 from ...db.session import get_db
@@ -15,41 +15,40 @@ from ...api.deps import get_current_user
 router = APIRouter()
 
 
-class RegisterRequest:
-    def __init__(self, email: EmailStr, password: str):
-        self.email = email
-        self.password = password
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+    @field_validator('email')
+    @classmethod
+    def email_must_be_valid(cls, v):
+        if '@' not in v or '.' not in v.split('@')[1]:
+            raise ValueError('Invalid email format')
+        return v
 
 
-class LoginRequest:
-    def __init__(self, email: EmailStr, password: str):
-        self.email = email
-        self.password = password
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
-class ResendVerificationRequest:
-    def __init__(self, email: EmailStr):
-        self.email = email
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 
-class ForgotPasswordRequest:
-    def __init__(self, email: EmailStr):
-        self.email = email
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
 
 
-class ResetPasswordRequest:
-    def __init__(self, token: str, password: str):
-        self.token = token
-        self.password = password
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
     email = str(request.email)
     password = request.password
-
-    if len(password) < 8:
-        raise HTTPException(status_code=422, detail="Password must be at least 8 characters long")
 
     # Check if user already exists
     user = db.query(User).filter(User.email == email).first()
@@ -110,7 +109,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 def logout(current_user: User = Depends(get_current_user)):
     # JWT is stateless, so we just return success.
     # Client should delete the token.
-    return {"message": "Successfully logged out"}
+    return {"message": "logged out successfully"}
 
 
 @router.get("/verify-email")
