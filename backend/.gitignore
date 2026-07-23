@@ -1,6 +1,7 @@
 # Caches 
 .pytest_cache/
 tests/phase1/__pycache__/
+tests/phase2/__pycache__/
 app/__pycache__/
 app/db/__pycache__/
 app/api/__pycache__/

@@ -43,7 +43,7 @@ In this phase, we will implement a basic working web app. We will interact with 
 - Implement proper loading states and error handling in UI
 
 ### 4. Manual testing 
-- Ths one is also self-explanatory. 
+- This one is also self-explanatory. 
 
 **Acceptance Criteria:** 
 - Test user registration flow end-to-end
