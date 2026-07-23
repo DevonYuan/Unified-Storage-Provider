@@ -72,14 +72,12 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
 
     # Send verification email
-    email_sent = email_service.send_verification_email(email, token)
-    logger.info(f"Verification email sent to {email}: {email_sent}")
+    email_service.send_verification_email(email, token)
 
     return {
         "id": new_user.id,
         "email": new_user.email,
         "email_verified": new_user.email_verified,
-        "email_sent": email_sent
     }
 
 

@@ -16,3 +16,4 @@ July 22, 2026:
 - Update: The UI signup system sucks
 - Update: Removed dev verification link from frontend Register page and replaced with rendered success message
 - Update: Removed verification_token from backend register response for security 
+- Update: The email message shows up in the UI but it is still not sending 
