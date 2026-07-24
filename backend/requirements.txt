@@ -8,3 +8,6 @@ pytest-asyncio
 passlib[bcrypt]>=1.7.4
 bcrypt<4.0.0
 pydantic[email]
+google-auth>=2.0.0
+google-auth-oauthlib>=0.4.0
+google-api-python-client>=2.0.0

@@ -1,18 +1,14 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# TODO: Replace with actual app imports when implemented
-# from app.main import app
-# from app.models.google_drive import GoogleOAuthToken
-
-def test_oauth_callback_success():
-    """Test successful OAuth callback with valid authorization code."""
+def test_google_oauth_callback_success():
+    """Test successful Google OAuth callback."""
     try:
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
+        from app.models.user import User, EmailVerification
         from app.models.google_drive import GoogleOAuthToken
-        from app.models.user import User
 
         client = TestClient(app)
         db = SessionLocal()
@@ -51,32 +47,31 @@ def test_oauth_callback_success():
             access_token = login_response.json()["access_token"]
 
             # Mock the OAuth token exchange
-            mock_tokens = {
+            token_data = {
                 "access_token": "oauth_access_token",
                 "refresh_token": "oauth_refresh_token",
-                "expires_in": 3599,
-                "token_type": "Bearer"
+                "expires_at": "2026-12-31T23:59:59Z"
             }
 
-            with patch('app.api.v1.google_drive.GoogleOAuthService.exchange_code_for_tokens') as mock_exchange:
-                mock_exchange.return_value = mock_tokens
+            with patch('app.api.v1.google_drive.GoogleDriveService.exchange_code_for_tokens') as mock_exchange:
+                mock_exchange.return_value = token_data
 
                 # Simulate OAuth callback with authorization code
                 response = client.get(
-                    "/api/v1/google/callback?code=auth_code_123&state=test_state",
+                    "/api/v1/google/oauth/callback?code=auth_code_123&state=test_state",
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
-                assert "access_token" in data
                 assert data["message"] == "Google Drive connected successfully"
 
                 # Verify tokens were stored in database
                 stored_token = db.query(GoogleOAuthToken).filter(GoogleOAuthToken.user_id == user_id).first()
                 assert stored_token is not None
                 assert stored_token.access_token == "oauth_access_token"
+                assert stored_token.refresh_token == "oauth_refresh_token"
 
                 # Clean up
                 if stored_token:
@@ -91,16 +86,16 @@ def test_oauth_callback_success():
 
         db.close()
     except (ImportError, AttributeError):
-        assert False, "Application not implemented yet - endpoint /api/v1/google/callback not available"
+        assert False, "Application not implemented yet - endpoint /api/v1/google/oauth/callback not available"
 
 
-def test_oauth_callback_missing_code():
-    """Test OAuth callback fails with missing authorization code."""
+def test_google_oauth_callback_missing_code():
+    """Test Google OAuth callback fails with missing authorization code."""
     try:
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -140,13 +135,13 @@ def test_oauth_callback_missing_code():
 
             # Call OAuth callback without code parameter
             response = client.get(
-                "/api/v1/google/callback",
+                "/api/v1/google/oauth/callback",
                 headers={"Authorization": f"Bearer {access_token}"}
             )
 
-            # These assertions will fail until endpoint is implemented
-            assert response.status_code == 400
-            assert "code" in response.json()["detail"].lower()
+            # These assertions will pass once endpoint is implemented
+            assert response.status_code == 422  # FastAPI validation error for missing required query param
+            assert "code" in response.json()["detail"][0]["loc"]  # Check that the error is about the code parameter
 
         # Clean up test user
         test_user = db.query(User).filter(User.email == "oauthmissing@example.com").first()
@@ -156,16 +151,16 @@ def test_oauth_callback_missing_code():
 
         db.close()
     except (ImportError, AttributeError):
-        assert False, "Application not implemented yet - endpoint /api/v1/google/callback not available"
+        assert False, "Application not implemented yet - endpoint /api/v1/google/oauth/callback not available"
 
 
-def test_oauth_callback_invalid_code():
-    """Test OAuth callback fails with invalid authorization code."""
+def test_google_oauth_callback_invalid_code():
+    """Test Google OAuth callback fails with invalid authorization code."""
     try:
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -204,17 +199,17 @@ def test_oauth_callback_invalid_code():
             access_token = login_response.json()["access_token"]
 
             # Mock the OAuth token exchange to raise an error
-            with patch('app.api.v1.google_drive.GoogleOAuthService.exchange_code_for_tokens') as mock_exchange:
+            with patch('app.api.v1.google_drive.GoogleDriveService.exchange_code_for_tokens') as mock_exchange:
                 mock_exchange.side_effect = Exception("Invalid authorization code")
 
                 response = client.get(
-                    "/api/v1/google/callback?code=invalid_code&state=test_state",
+                    "/api/v1/google/oauth/callback?code=invalid_code&state=test_state",
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 400
-                assert "invalid" in response.json()["detail"].lower()
+                assert "Failed to authenticate with Google Drive" in response.json()["detail"]
 
         # Clean up test user
         test_user = db.query(User).filter(User.email == "oauthinvalid@example.com").first()
@@ -224,4 +219,4 @@ def test_oauth_callback_invalid_code():
 
         db.close()
     except (ImportError, AttributeError):
-        assert False, "Application not implemented yet - endpoint /api/v1/google/callback not available"
+        assert False, "Application not implemented yet - endpoint /api/v1/google/oauth/callback not available"

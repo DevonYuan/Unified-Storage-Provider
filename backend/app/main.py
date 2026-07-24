@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.v1 import auth
+from .api.v1 import google_drive
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,9 @@ app.add_middleware(
 
 # Include authentication router
 app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
+
+# Include Google Drive router
+app.include_router(google_drive.router, prefix="/api/v1", tags=["google-drive"])
 
 @app.get("/")
 def read_root():

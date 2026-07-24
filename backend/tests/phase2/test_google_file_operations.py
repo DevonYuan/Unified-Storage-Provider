@@ -1,17 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# TODO: Replace with actual app imports when implemented
-# from app.main import app
-# from app.models.google_drive import GoogleOAuthToken, GoogleFile
-
 def test_create_folder():
     """Test creating a folder in Google Drive."""
     try:
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -66,7 +62,7 @@ def test_create_folder():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert data["name"] == "New Folder"
@@ -89,7 +85,7 @@ def test_delete_file():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -135,7 +131,7 @@ def test_delete_file():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert "deleted" in data["message"].lower()
@@ -157,7 +153,7 @@ def test_rename_file():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -212,7 +208,7 @@ def test_rename_file():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert data["name"] == "Renamed Document.pdf"

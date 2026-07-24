@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     BREVO_SENDER_EMAIL: str
     BREVO_SENDER_NAME: str = "OmniDrive"
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str
+    GOOGLE_CLIENT_SECRET: str
+    GOOGLE_REDIRECT_URI: str
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 # Try to find .env file in project root or parent directories

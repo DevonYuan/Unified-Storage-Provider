@@ -1,10 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# TODO: Replace with actual app imports when implemented
-# from app.main import app
-# from app.models.google_drive import GoogleOAuthToken, GoogleFile
-
 def test_list_files():
     """Test listing Google Drive files."""
     try:
@@ -12,7 +8,7 @@ def test_list_files():
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
         from app.models.google_drive import GoogleOAuthToken, GoogleFile
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -77,7 +73,7 @@ def test_list_files():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert len(data["files"]) == 2
@@ -102,7 +98,7 @@ def test_list_files_in_folder():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -158,7 +154,7 @@ def test_list_files_in_folder():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert len(data["files"]) == 1
@@ -181,7 +177,7 @@ def test_upload_file():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -238,7 +234,7 @@ def test_upload_file():
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 data = response.json()
                 assert data["name"] == "uploaded_document.pdf"
@@ -261,7 +257,7 @@ def test_download_file():
         from app.main import app
         from fastapi.testclient import TestClient
         from app.db.session import SessionLocal
-        from app.models.user import User
+        from app.models.user import User, EmailVerification
 
         client = TestClient(app)
         db = SessionLocal()
@@ -303,13 +299,12 @@ def test_download_file():
 
             with patch('app.api.v1.google_drive.GoogleDriveService.download_file') as mock_download:
                 mock_download.return_value = mock_file_content
-
                 response = client.get(
                     "/api/v1/google/files/file1/download",
                     headers={"Authorization": f"Bearer {access_token}"}
                 )
 
-                # These assertions will fail until endpoint is implemented
+                # These assertions will pass once endpoint is implemented
                 assert response.status_code == 200
                 assert response.content == mock_file_content
                 assert response.headers["content-type"] == "application/octet-stream"
