@@ -25,3 +25,7 @@ July 23, 2026
 - Phase 1 is complete 
 - I should move around the .env file so that it is in the root directory. (Done now)
 - Failing backend tests for phase 2 have been added 
+
+July 24, 2026
+- Working on the Google Integration
+- I addded "http://127.0.0.1:8000/auth/google/callback" as an authorized redirect URI. 
