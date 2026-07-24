@@ -24,3 +24,4 @@ July 23, 2026
 - Need to figure out how to create a page that the user reaches when they verify their email (currently gives the mesage 404 / page not foun)
 - Phase 1 is complete 
 - I should move around the .env file so that it is in the root directory. (Done now)
+- Failing backend tests for phase 2 have been added 
