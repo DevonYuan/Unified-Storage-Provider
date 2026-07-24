@@ -7,7 +7,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     const location = useLocation();
 
     if (isLoading) {
-        return <div>Loading...</div>;
+        return <div className="text-center py-8 text-gray-400">Loading...</div>;
     }
 
     if (!token) {

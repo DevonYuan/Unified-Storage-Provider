@@ -58,15 +58,15 @@ const GoogleDriveConnector: React.FC = () => {
 
   return (
     <div>
-      {debugInfo && <p className="text-blue-500 text-sm">{debugInfo}</p>}
+      {debugInfo && <p className="text-blue-400 text-sm">{debugInfo}</p>}
       {isConnected ? (
         <>
-          <span className="text-green-600">Google Drive Connected</span>
+          <span className="text-green-400">Google Drive Connected</span>
           {/* In a full implementation, we might have a disconnect button here */}
         </>
       ) : (
         <>
-          {error && <p className="text-red-500">{error}</p>}
+          {error && <p className="text-red-400">{error}</p>}
           <Button onClick={handleConnect} variant="outline">
             Connect Google Drive
           </Button>

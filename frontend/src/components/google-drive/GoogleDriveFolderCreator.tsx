@@ -32,7 +32,7 @@ const GoogleDriveFolderCreator: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="folder-name" className="block text-sm font-medium mb-1">
+        <label htmlFor="folder-name" className="block text-sm font-medium text-gray-200 mb-1">
           Folder name
         </label>
         <input
@@ -42,31 +42,25 @@ const GoogleDriveFolderCreator: React.FC<{
           onChange={(e) => setFolderName(e.target.value)}
           disabled={creating}
           placeholder="Enter folder name"
-          className={`block w-full px-3 py-2 border border-gray-300 rounded-md
-            text-sm focus:outline-none focus:ring-2 focus:ring-violet-500
-            disabled:opacity-50`}
+          className="block w-full px-3 py-2 border border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-800 text-gray-100 disabled:opacity-50"
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="flex justify-end space-x-3">
         <button
           type="button"
           onClick={onCancel}
           disabled={creating}
-          className={`px-4 py-2 bg-white border border-gray-300 rounded-md
-            text-sm font-medium hover:bg-gray-50 disabled:opacity-50
-            transition-colors`}
+          className="px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!folderName.trim() || creating}
-          className={`px-4 py-2 bg-violet-600 text-white rounded-md
-            text-sm font-medium hover:bg-violet-700 disabled:opacity-50
-            transition-colors`}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {creating ? 'Creating...' : 'Create Folder'}
         </button>

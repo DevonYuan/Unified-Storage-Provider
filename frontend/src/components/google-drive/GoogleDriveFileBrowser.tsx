@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { googleDriveService } from '../../api/googleDrive.service';
 import GoogleDriveConnector from './GoogleDriveConnector';
+import React, { useState, useEffect } from 'react';
+import { googleDriveService } from '../../api/googleDrive.service';
+import GoogleDriveConnector from './GoogleDriveConnector';
 import GoogleDriveFileItem from './GoogleDriveFileItem';
 import GoogleDriveUploadButton from './GoogleDriveUploadButton';
 import GoogleDriveFolderCreator from './GoogleDriveFolderCreator';
@@ -126,11 +129,11 @@ const GoogleDriveFileBrowser: React.FC = () => {
   };
 
   if (loading && files.length === 0) {
-    return <div className="text-center py-8">Loading...</div>;
+    return <div className="text-center py-8 text-gray-400">Loading...</div>;
   }
 
   if (error) {
-    return <div className="text-center text-red-600 py-8">{error}</div>;
+    return <div className="text-center text-red-500 py-8">{error}</div>;
   }
 
   return (
@@ -138,15 +141,14 @@ const GoogleDriveFileBrowser: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap">
         <div>
-          <h2 className="text-xl font-bold">Google Drive</h2>
-          <p className="text-sm text-gray-600">{breadcrumb.length > 1 ? breadcrumb[breadcrumb.length - 1].name : 'My Drive'}</p>
+          <h2 className="text-xl font-bold text-white">Google Drive</h2>
+          <p className="text-sm text-gray-400">{breadcrumb.length > 1 ? breadcrumb[breadcrumb.length - 1].name : 'My Drive'}</p>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={goBack}
             disabled={breadcrumb.length <= 1}
-            className={`px-3 py-1 bg-white border border-gray-300 rounded-md
-              text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors`}
+            className="px-3 py-1 bg-gray-800 border border-gray-600 rounded-md text-sm hover:bg-gray-700 disabled:opacity-50 transition-colors"
           >
             ← Back
           </button>
@@ -160,17 +162,17 @@ const GoogleDriveFileBrowser: React.FC = () => {
       </div>
 
       {/* Breadcrumb navigation */}
-      <div className="flex items-center space-x-2 text-sm text-gray-600">
+      <div className="flex items-center space-x-2 text-sm text-gray-400">
         {breadcrumb.map((crumb, index) => (
           <React.Fragment key={crumb.id}>
-            {index > 0 && <span>/</span>}
+            {index > 0 && <span className="mx-1">/</span>}
             <button
               onClick={() => {
                 const newBreadcrumb = breadcrumb.slice(0, index + 1);
                 setBreadcrumb(newBreadcrumb);
                 setCurrentFolderId(newBreadcrumb[newBreadcrumb.length - 1].id || null);
               }}
-              className={`hover:text-violet-600 transition-colors`}
+              className="hover:text-white transition-colors"
             >
               {crumb.name}
             </button>
@@ -181,7 +183,7 @@ const GoogleDriveFileBrowser: React.FC = () => {
       {/* Files grid */}
       <div className="space-y-4">
         {files.length === 0 ? (
-          <div className="text-center py-8 text-gray-600">
+          <div className="text-center py-8 text-gray-400">
             <p>This folder is empty</p>
             {!breadcrumb.length <= 1 && (
               <Button onClick={() => setShowFolderModal(true)} variant="outline" size="sm">
@@ -194,14 +196,14 @@ const GoogleDriveFileBrowser: React.FC = () => {
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-start space-x-4 p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-start space-x-4 p-4 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-lg text-xl">
+                  <div className="w-12 h-12 flex items-center justify-center bg-gray-600/20 rounded-lg text-xl">
                     {getFileIcon(file.mime_type)}
                   </div>
                 </div>
-                <div className="flex-1 space-y-2">
+                <div className="flex-1 space-y-2 text-white">
                   <div className="flex justify-between items-start">
                     <h3 className="font-medium truncate max-w-xs">{file.name}</h3>
                     <div className="flex space-x-2">
@@ -215,9 +217,8 @@ const GoogleDriveFileBrowser: React.FC = () => {
                             console.log('Would download file:', file.id);
                           }
                         }}
-                        className={`p-1 rounded-hover text-gray-400 hover:text-gray-600 transition-colors`}
+                        className="p-1 rounded-hover text-gray-400 hover:text-gray-300 transition-colors"
                       >
-                        {/* In a real app, we'd have proper icons */}
                         📄
                       </button>
                       <button
@@ -228,19 +229,19 @@ const GoogleDriveFileBrowser: React.FC = () => {
                             handleRename(file.id, newName);
                           }
                         }}
-                        className={`p-1 rounded-hover text-gray-400 hover:text-gray-600 transition-colors`}
+                        className="p-1 rounded-hover text-gray-400 hover:text-gray-300 transition-colors"
                       >
                         ✏️
                       </button>
                       <button
                         onClick={() => handleDelete(file.id)}
-                        className={`p-1 rounded-hover text-gray-400 hover:text-red-600 transition-colors`}
+                        className="p-1 rounded-hover text-gray-400 hover:text-red-400 transition-colors"
                       >
                         🗑️
                       </button>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 space-y-1">
+                  <div className="text-sm text-gray-400 space-y-1">
                     <p>{file.mime_type}</p>
                     {file.size !== null && file.size !== undefined && (
                       <p>
@@ -254,6 +255,19 @@ const GoogleDriveFileBrowser: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Modals */}
+      <GoogleDriveUploadButton
+        onUpload={handleUpload}
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+      />
+      <GoogleDriveFolderCreator
+        onCreateFolder={handleCreateFolder}
+        isOpen={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+        parentId={currentFolderId}
+      />
     </div>
   );
 };

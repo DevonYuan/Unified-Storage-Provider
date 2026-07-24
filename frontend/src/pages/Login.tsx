@@ -25,30 +25,31 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
+        <div className="auth-container">
             <h2>Login</h2>
             <form onSubmit={handleSubmit(onSubmit)}>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label htmlFor="email">Email</label><br/>
+                <div className="form-group">
+                    <label htmlFor="email">Email</label>
                     <input
                         id="email"
+                        type="email"
                         {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+$/, message: 'Invalid email format' } })}
-                        style={{ width: '100%' }}
+                        className="form-input"
                     />
-                    {errors.email && <span style={{ color: 'red', fontSize: '0.8rem' }}>{errors.email.message as string}</span>}
+                    {errors.email && <span className="error-message">{errors.email.message as string}</span>}
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <label htmlFor="password">Password</label><br/>
+                <div className="form-group">
+                    <label htmlFor="password">Password</label>
                     <input
                         id="password"
                         type="password"
                         {...register('password', { required: 'Password is required' })}
-                        style={{ width: '100%' }}
+                        className="form-input"
                     />
-                    {errors.password && <span style={{ color: 'red', fontSize: '0.8rem' }}>{errors.password.message as string}</span>}
+                    {errors.password && <span className="error-message">{errors.password.message as string}</span>}
                 </div>
-                <button type="submit" style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}>Sign In</button>
-                <p style={{ textAlign: 'center' }}>
+                <button type="submit" className="btn-primary w-full">Sign In</button>
+                <p className="text-center mt-4">
                     Don't have an account? <Link to="/register">Sign up</Link>
                 </p>
             </form>

@@ -36,7 +36,7 @@ const GoogleDriveUploadButton: React.FC<{
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="file-upload" className="block text-sm font-medium mb-1">
+        <label htmlFor="file-upload" className="block text-sm font-medium text-gray-200 mb-1">
           Select file to upload
         </label>
         <input
@@ -44,37 +44,30 @@ const GoogleDriveUploadButton: React.FC<{
           type="file"
           onChange={handleFileChange}
           disabled={uploading}
-          className={`block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0 file:text-sm file:font-semibold
-            file:bg-violet-50 file:text-violet-600 hover:file:bg-violet-100
-            disabled:opacity-50`}
+          className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-gray-100 hover:file:bg-gray-700 disabled:opacity-50"
         />
         {selectedFile && (
-          <p className="mt-2 text-sm text-gray-600 truncate">
+          <p className="mt-2 text-sm text-gray-300 truncate">
             Selected: {selectedFile.name}
           </p>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="flex justify-end space-x-3">
         <button
           type="button"
           onClick={onCancel}
           disabled={uploading}
-          className={`px-4 py-2 bg-white border border-gray-300 rounded-md
-            text-sm font-medium hover:bg-gray-50 disabled:opacity-50
-            transition-colors`}
+          className="px-4 py-2 bg-gray-800 border border-gray-600 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={!selectedFile || uploading}
-          className={`px-4 py-2 bg-violet-600 text-white rounded-md
-            text-sm font-medium hover:bg-violet-700 disabled:opacity-50
-            transition-colors`}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {uploading ? 'Uploading...' : 'Upload'}
         </button>

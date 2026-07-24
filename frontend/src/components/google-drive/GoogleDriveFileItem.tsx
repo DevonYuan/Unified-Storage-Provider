@@ -36,17 +36,17 @@ const GoogleDriveFileItem: React.FC<{
   return (
     <div
       onClick={() => onClick(file)}
-      className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+      className="flex items-center p-3 bg-gray-800 border border-gray-600 rounded-lg hover:bg-gray-700 cursor-pointer transition-colors"
     >
-      <div className="text-2xl mr-3">{getFileIcon(file.mime_type || '')}</div>
-      <div className="flex-1 min-w-0">
+      <div className="text-2xl mr-3 text-gray-300">{getFileIcon(file.mime_type || '')}</div>
+      <div className="flex-1 min-w-0 text-white">
         <div className="font-medium truncate">{file.name}</div>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-400">
           {file.mime_type || 'Unknown type'}
         </div>
       </div>
       {!file.parent_id && (
-        <div className="text-xs text-gray-400">(Root)</div>
+        <div className="text-xs text-gray-500">(Root)</div>
       )}
     </div>
   );

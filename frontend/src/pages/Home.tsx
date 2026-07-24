@@ -1,28 +1,29 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ maxWidth: '800px', margin: '4rem auto', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Welcome to OmniDrive</h1>
-      <p style={{ fontSize: '1.2rem', color: '#555', marginBottom: '2rem' }}>
+    <div className="container text-center py-12">
+      <h1 className="text-4xl font-bold mb-4 text-white">Welcome to OmniDrive</h1>
+      <p className="text-xl text-gray-300 mb-8">
         The unified cloud storage pool that aggregates all your free-tier personal cloud accounts.
       </p>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-        <button 
-          onClick={() => navigate('/login')}
-          style={{ padding: '0.8rem 1.5rem', fontSize: '1rem', cursor: 'pointer', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
+      <div className="flex justify-center gap-4">
+        <Link
+          to="/login"
+          className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Log In
-        </button>
-        <button 
-          onClick={() => navigate('/register')}
-          style={{ padding: '0.8rem 1.5rem', fontSize: '1rem', cursor: 'pointer', backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ccc', borderRadius: '4px' }}
+        </Link>
+        <Link
+          to="/register"
+          className="px-6 py-3 border border-gray-600 text-gray-200 rounded-md hover:border-gray-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Sign Up
-        </button>
+        </Link>
       </div>
     </div>
   );

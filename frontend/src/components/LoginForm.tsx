@@ -25,9 +25,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <div>
-        <label htmlFor="email">Email</label>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+      <div className="space-y-1">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-200">
+          Email
+        </label>
         <input
           id="email"
           type="email"
@@ -38,12 +40,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               message: 'Invalid email',
             },
           })}
+          className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {errors.email && <span>{errors.email.message}</span>}
+        {errors.email && <span className="text-red-400 text-sm">{errors.email.message}</span>}
       </div>
 
-      <div>
-        <label htmlFor="password">Password</label>
+      <div className="space-y-1">
+        <label htmlFor="password" className="block text-sm font-medium text-gray-200">
+          Password
+        </label>
         <input
           id="password"
           type="password"
@@ -54,11 +59,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               message: 'Password too short',
             },
           })}
+          className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {errors.password && <span>{errors.password.message}</span>}
+        {errors.password && <span className="text-red-400 text-sm">{errors.password.message}</span>}
       </div>
 
-      <button type="submit">Sign In</button>
+      <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        Sign In
+      </button>
     </form>
   );
 };

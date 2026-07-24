@@ -43,20 +43,22 @@ const VerifyEmail: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '1rem' }}>
+    <div className="auth-container">
       <h2>Verify Email</h2>
       {status === 'loading' && <p>Verifying your email...</p>}
       {status === 'success' && (
         <div>
-          <p style={{ color: 'green' }}>{message}</p>
-          <button onClick={() => navigate('/login')}>Go to Login</button>
+          <p className="success-message">{message}</p>
+          <button onClick={() => navigate('/login')} className="btn-primary">Go to Login</button>
         </div>
       )}
       {status === 'error' && (
         <div>
-          <p style={{ color: 'red' }}>{message}</p>
-          <button onClick={handleResend} style={{ marginRight: '0.5rem' }}>Resend Verification</button>
-          <button onClick={() => navigate('/login')}>Back to Login</button>
+          <p className="error-message">{message}</p>
+          <div className="flex mt-4">
+            <button onClick={handleResend} className="btn-primary mr-2">Resend Verification</button>
+            <button onClick={() => navigate('/login')} className="btn-secondary">Back to Login</button>
+          </div>
         </div>
       )}
     </div>
