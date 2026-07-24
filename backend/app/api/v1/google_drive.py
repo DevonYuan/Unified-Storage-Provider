@@ -2,29 +2,41 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import Optional
 import io
-from fastapi.responses import Response
+import secrets
+from datetime import datetime, timedelta, timezone
+from fastapi.responses import Response, RedirectResponse
+from jose import JWTError, jwt
 
 from ...db.session import get_db
 from ...models.user import User
 from ...api.deps import get_current_user
+from ...core.security import decode_access_token, create_access_token
+from ...core.config import settings
 from ...services.google_drive_service import GoogleDriveService
 
 router = APIRouter(
-    prefix="/google",
+    prefix="",
     tags=["google-drive"]
 )
 
 # Initialize service
 drive_service = GoogleDriveService()
 
+def create_oauth_state_token(user_id: int) -> str:
+    """Create a short-lived state token for OAuth flow containing user ID."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)  # Short-lived for OAuth flow
+    to_encode = {"sub": str(user_id), "exp": expire}
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
+
 @router.get("/oauth/url")
 async def get_google_oauth_url(
-    current_user: User = Depends(get_current_user),
-    state: Optional[str] = None
+    current_user: User = Depends(get_current_user)
 ):
     """Get Google OAuth 2.0 authorization URL."""
     try:
-        auth_url = drive_service.get_oauth_url(state=state)
+        # Generate a state token that contains the user ID and is short-lived
+        state_token = create_oauth_state_token(current_user.id)
+        auth_url = drive_service.get_oauth_url(state=state_token)
         return {"auth_url": auth_url}
     except Exception as e:
         raise HTTPException(
@@ -36,11 +48,33 @@ async def get_google_oauth_url(
 async def google_oauth_callback(
     code: str,
     state: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """Handle Google OAuth 2.0 callback."""
+    frontend_url = settings.FRONTEND_URL
     try:
+        if not state:
+            raise ValueError("No state parameter provided")
+
+        # Decode the state token to get user ID
+        payload = decode_access_token(state)
+        if not payload:
+            raise ValueError("Invalid state token")
+
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise ValueError("No user ID in state token")
+
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            raise ValueError("Invalid user ID in state token")
+
+        # Get the user by ID
+        current_user = db.query(User).filter(User.id == user_id).first()
+        if not current_user:
+            raise ValueError("User not found")
+
         # Exchange authorization code for tokens
         token_data = drive_service.exchange_code_for_tokens(code)
 
@@ -53,18 +87,12 @@ async def google_oauth_callback(
         )
 
         if not success:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to store OAuth tokens"
-            )
+            raise ValueError("Failed to store OAuth tokens")
 
-        return {"message": "Google Drive connected successfully"}
+        return RedirectResponse(url=f"{frontend_url}/?google=success")
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to authenticate with Google Drive"
-        )
+        return RedirectResponse(url=f"{frontend_url}/?google=error")
 
 @router.post("/tokens")
 async def store_google_tokens(
@@ -115,15 +143,19 @@ async def get_google_tokens(
     current_user: User = Depends(get_current_user)
 ):
     """Get stored Google OAuth tokens for the current user."""
+    print(f"DEBUG: get_google_tokens called for user {current_user.id} ({current_user.email})")
     try:
         tokens = drive_service.get_tokens(current_user.id)
+        print(f"DEBUG: Retrieved tokens for user {current_user.id}: {tokens is not None}")
         if not tokens:
+            print(f"DEBUG: No tokens found for user {current_user.id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No tokens found for user"
             )
         return tokens
     except Exception as e:
+        print(f"ERROR in get_google_tokens: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error"

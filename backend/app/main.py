@@ -21,8 +21,8 @@ app.add_middleware(
 # Include authentication router
 app.include_router(auth.router, prefix="/api/v1", tags=["authentication"])
 
-# Include Google Drive router
-app.include_router(google_drive.router, prefix="/api/v1", tags=["google-drive"])
+# Include Google Drive router WITHOUT the /api/v1 prefix to match Google Cloud Console config
+app.include_router(google_drive.router, prefix="/auth/google", tags=["google-drive"])
 
 @app.get("/")
 def read_root():
