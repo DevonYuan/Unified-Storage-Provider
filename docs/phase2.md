@@ -43,6 +43,7 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - Follow FastAPI best practices for dependency injection and error handling
 - Use React hooks for state management in frontend
 - Implement proper loading states and error handling in UI
+- The tests of both phases 1 and 2 must pass. 
 
 ### 4. Manual testing 
 - This one is also self-explanatory. 
