@@ -60,13 +60,12 @@ const ResetPassword: React.FC = () => {
       )}
 
       {status === 'success' && (
-<div>
-          <p className="success' ? (
         <div>
           <p className="success-message">{message}</p>
           <button onClick={() => navigate('/login')} className="btn-primary">Go to Login</button>
         </div>
-      ) : (
+      )}
+      {status === 'idle' && (
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="password">New Password:</label>
@@ -92,7 +91,7 @@ const ResetPassword: React.FC = () => {
             />
           </div>
 
-          {status === 'error' && password && (
+          {status === 'error' && (
             <p className="error-message">{message}</p>
           )}
 

@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { googleDriveService } from '../../api/googleDrive.service';
 import GoogleDriveConnector from './GoogleDriveConnector';
-import React, { useState, useEffect } from 'react';
-import { googleDriveService } from '../../api/googleDrive.service';
-import GoogleDriveConnector from './GoogleDriveConnector';
 import GoogleDriveFileItem from './GoogleDriveFileItem';
 import GoogleDriveUploadButton from './GoogleDriveUploadButton';
 import GoogleDriveFolderCreator from './GoogleDriveFolderCreator';
