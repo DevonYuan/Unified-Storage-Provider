@@ -9,3 +9,6 @@ app/api/v1/__pycache__/
 app/core/__pycache__/
 app/models/__pycache__/
 app/services/__pycache__/
+
+# Secret for Google Drive Integration 
+Client Secret - DO NOT COMMIT.json

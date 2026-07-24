@@ -44,6 +44,7 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - Use React hooks for state management in frontend
 - Implement proper loading states and error handling in UI
 - The tests of both phases 1 and 2 must pass
+- The endpoint that uses OAuth to gain access must use "/auth/google/callback", i. e. the redirect URI is http://127.0.0.1:8000/auth/google/callback
 
 ### 4. Manual testing 
 - This one is also self-explanatory. 
