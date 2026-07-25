@@ -1,8 +1,8 @@
 # OmniDrive: Unified Cloud Storage Pool
 
-OmniDrive is an open-source web application designed to aggregate a user's free-tier personal cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single, seamless, and unified virtual storage pool. 
+This is a personal tool that I made for myself, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, and unified virtual storage pool. 
 
-Instead of jumping between different interfaces and managing fragmented storage limits, OmniDrive acts as a router and abstraction layer. It presents a single interface where your total available storage is the sum of your connected providers, automatically handling file chunking, distribution, and retrieval across APIs without costing a dime in infrastructure fees.
+Instead of jumping between different interfaces and managing fragmented storage limits, OmniDrive acts as a router and abstraction layer. It presents a single interface where your total available storage is the sum of your connected providers, automatically handling distribution and retrieval across APIs without costing a dime in infrastructure fees.
 
 ## Tech Stack 
 **Database**: PostgreSQL deployed on Supabase <br>

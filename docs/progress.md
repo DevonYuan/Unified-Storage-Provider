@@ -29,4 +29,5 @@ July 23, 2026
 July 24, 2026
 - Working on the Google Integration
 - I addded "http://127.0.0.1:8000/auth/google/callback" as an authorized redirect URI in GCP.
-- Tells me I am not authenticated after connecting to Google Drive  
+- Tells me I am not authenticated after connecting to Google Drive 
+- I have decided to restriact the scope of the app to managing my OWN Google Drive and OneDrive. Need to update this in README.md. 
