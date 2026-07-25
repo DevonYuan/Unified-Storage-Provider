@@ -7,12 +7,6 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - We are not concerned with Microsoft OneDrive integration at this time
 - We will be using Google OAuth 2.0 and the Google Drive API. I will manually add the environment variables.
 
-**Acceptance Criteria:** 
-- Define google_oauth_tokens table with fields: id, user_id, access_token, refresh_token, expires_at, created_at, updated_at
-- Define google_files table with fields: id, user_id, file_id, name, mime_type, size, parent_id, modified_time, created_at
-- Document token refresh strategy and expiration handling
-- Plan for future expansion to include unified file metadata tables
-
 ### 2. Write tests for the backend and frontend
 - The tests apply strictly to the functionality of the Google Drive integration. 
 
@@ -39,12 +33,8 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - Implement file download endpoint from Google Drive
 - Implement folder creation and navigation, deletion, and renaming 
 - Create frontend Google Drive file browser UI
-- Implement "Connect Google Drive" button and OAuth flow
-- Follow FastAPI best practices for dependency injection and error handling
-- Use React hooks for state management in frontend
-- Implement proper loading states and error handling in UI
-- The tests of both phases 1 and 2 must pass
-- The endpoint that uses OAuth to gain access must use "/auth/google/callback", i. e. the redirect URI is http://127.0.0.1:8000/auth/google/callback
+- Implement "Connect Google Drive" button and OAuth flow (Given the scope, this should be a one-time thing)
+- The REDIRECT_URI used for calling OAuth is included in the environment variables 
 
 ### 4. Manual testing 
 - This one is also self-explanatory. 
@@ -55,8 +45,6 @@ In this phase, we will add support for Google Drive. We will implement the OAuth
 - Test file upload and download
 - Test folder creation
 - Test token refresh behavior
-- Test on both localhost and test deployment if available
-- Test edge cases like expired tokens, API quota limits, invalid file IDs
 
 The end goal of this, is that there is functionally no difference between using our app, and using Google Drive. <br>
 The work that a user does within this app should reflect in their actual Google Drive account.

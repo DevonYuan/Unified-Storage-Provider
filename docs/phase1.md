@@ -1,54 +1,15 @@
 # Phase 1 - Web App Skeleton 
-In this phase, we will implement a basic working web app. We will interact with a Supabase database, but the frontend and backend will remain locally running for now. 
+In this phase, we will implement a basic working web app. We will interact with a Supabase database. 
 
 ## To-Do List 
 ### 1. Decide upon table definitions.
-- Choose definitions for a basic web app with no functionality outside of being able to log in and log out. 
-- We are not concerned with the functionality of later phases
-- We will be using an email verification system via Brevo and JWT based authentication. I will manually add the environemnt variables.
+Choose table definitions for a basic web app with no functionality outside of being able to log in and log out. This is not logging in and logging out in the traditional sense. I will not be entering my credentials, and logging in will only be done by clicking one button. It is more of a personal preference: I want to click the button to "open" up the storage. 
 
-**Acceptance Criteria:** 
-- Document JWT token structure and expiration times
-- Consider adding fields for OAuth tokens for future Google/OneDrive integration
-- Plan for future expansion to include file metadata tables
+### 2. Write failing tests for the frontend and backend 
 
-### 2. Write tests for the backend and frontend
-- The tests apply strictly to the functionality of the login and authentication. 
 
-**Acceptance Criteria:** 
-- Write unit tests for user registration endpoint
-- Write unit tests for login/logout endpoints
-- Write unit tests for email verification flow
-- Write frontend tests for login/logout UI components
-- Write tests that verify JWT token creation and validation
-- Ensure all tests clean up test data from database
-- Use pytest for backend tests and Jest/Vitest for frontend tests
-- Mock external services (Brevo email service) in tests
-
-### 3. Implement the backend and frontend
-- This one is self-explanatory. Tests MUST be written BEFORE this happens. 
-- The tests added in phase 2 must NOT be edited without good reason 
-
-**Acceptance Criteria:** 
-- Implement user registration with email verification via Brevo
-- Implement secure login/logout with JWT's
-- Implement password reset functionality via email
-- Create frontend login/register pages with form validation
-- Create protected routes that require authentication
-- Implement environment variable configuration for Brevo and JWT secrets
-- Follow FastAPI best practices for dependency injection and error handling
-- Use React hooks form library for form handling in frontend
-- Implement proper loading states and error handling in UI
+### 3. Implementing the frontend and backend 
+Since there is no "authentication" required, this should be relatively fast, as I am the sole user. 
 
 ### 4. Manual testing 
-- This one is also self-explanatory. 
-
-**Acceptance Criteria:** 
-- Test user registration flow end-to-end
-- Test login/logout functionality
-- Test email verification link functionality
-- Test password reset flow
-- Test protected routes redirect unauthenticated users
-- Verify JWT tokens are properly set and cleared
-- Test on both localhost and test deployment if available
-- Test edge cases like invalid tokens, expired tokens, malformed requests 
+At the end of the phase, I should be able to log in to the app, and log out. All other functionality is outside the scope of this phase. 

@@ -18,12 +18,13 @@ Instead of jumping between different interfaces and managing fragmented storage 
 
 ```mermaid
 flowchart TD
-    A[Frontend: React/Vite on Vercel] --> B[Backend: FastAPI on Render]
+    A[Frontend: React/Vite] --> B[Backend: FastAPI]
     B --> C[Google Drive API]
     B --> D[Microsoft Graph Files API]
     B --> E[PostgreSQL on Supabase]
 ``` 
 
+Once the backend and frontend run locally, we will package the app as a desktop app using Electron. 
 
 ## Context Protocol
 Prior to coding, feed the LLM:
@@ -34,7 +35,6 @@ Prior to coding, feed the LLM:
 ### Code Generation Rules
 - Testing must always be written before implementation 
 - All tests must "clean" the database by themselves. If the test works with the database, any entries that are added as part of the test must be removed within the same test. 
-
 
 ## Phases
 We will eleborate more on this in separate documents. 
@@ -52,3 +52,6 @@ Implement the core functionality that merges the storage from both providers int
 
 ### Phase 5 - Polishing (Optional)
 Explore different UI styles and experiment with different AI tools to only enhance the UI, but do NOT break the functionality of the app? 
+
+### Footnote 
+I origially intended for this app to suport several users, but it must undergo Google's verification process to allow users without having to explicitly add them to a list in the GCP console. I fully intend on preparing demo videos and submitting them for review in the future, but until then this remains a personal tool. 
