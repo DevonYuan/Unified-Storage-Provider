@@ -16,8 +16,5 @@ export default defineConfig({
                 changeOrigin: true,
             },
         },
-        allowedHosts: [
-            "sb-67scce6cftqu.vercel.run",
-        ],
     },
 })
