@@ -136,11 +136,6 @@ export function LoginPage() {
           </div>
           <span style={{ fontSize: 13, fontWeight: 500, color: C.fg }}>OmniDrive</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-          {['Features', 'Providers', 'Pricing'].map(item => (
-            <span key={item} style={{ fontSize: 13, color: C.fgMuted, cursor: 'default' }}>{item}</span>
-          ))}
-        </div>
       </nav>
 
       <main style={{
@@ -187,18 +182,6 @@ export function LoginPage() {
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M2 6.5H11M11 6.5L7.5 3M11 6.5L7.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </button>
-          <button
-            style={{
-              fontSize: 13, color: C.fgMuted,
-              padding: '10px 20px', borderRadius: 999,
-              border: `1px solid ${C.border}`, background: 'none',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.fgSubtle; e.currentTarget.style.color = C.fg }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.fgMuted }}
-          >
-            Explore the demo
           </button>
         </div>
 
