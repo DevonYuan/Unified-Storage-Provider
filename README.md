@@ -26,16 +26,6 @@ flowchart TD
 
 Once the backend and frontend run locally, we will package the app as a desktop app using Electron. 
 
-## Context Protocol
-Prior to coding, feed the LLM:
-- This document 
-- `progress.md`
-- The document for the current phase you are working on, and documents for any previous phases 
-
-### Code Generation Rules
-- Testing must always be written before implementation 
-- All tests must "clean" the database by themselves. If the test works with the database, any entries that are added as part of the test must be removed within the same test. 
-
 ## Phases
 We will eleborate more on this in separate documents. 
 ### Phase 1 - Skeleton
