@@ -81,6 +81,9 @@ frontend/
   tsconfig.json
   .env.example
 
+docs/
+  screenshots/
+
 package.json  (root - for scripts)
 ```
 
