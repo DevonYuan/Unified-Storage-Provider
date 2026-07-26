@@ -193,7 +193,7 @@ export function LoginPage() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.fgSubtle; e.currentTarget.style.color = C.fg }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.fgMuted }}
           >
-            Explore the demo
+            Get set up
           </button>
         </div>
 
