@@ -7,10 +7,6 @@ Instead of jumping between different interfaces and managing fragmented storage 
 
 OmniDrive is a fully local, single-user desktop app. There is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
 
-OmniDrive is a fully local, single-user desktop app. There is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
-
-## Tech Stack
-
 ## Tech Stack
 
 **Backend**:
@@ -46,10 +42,6 @@ Phase 4: <br>
 - `settings` — app-level key/value config (default provider, chunk size threshold, etc.)
 
 ## Phases
-
-We will elaborate more on this in separate documents.
-
-
 We will elaborate more on this in separate documents.
 
 ### Phase 1 - Skeleton
