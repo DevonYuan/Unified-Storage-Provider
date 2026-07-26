@@ -45,7 +45,7 @@ Phase 4: <br>
 We will elaborate more on this in separate documents.
 
 ### Phase 1 - Skeleton
-Build a working skeleton of a web app. Logging in and out are the only features. 
+Build a working skeleton of a web app. Logging in and out are the only features. Finished July 26, 2026
 
 ### Phase 2 - Google Drive Integration
 Users store their required data locally — no authentication, no accounts, no data collection. This phase includes standing up the local SQLite schema and the keyring-based secret storage that later phases will build on. We will also add support for Google Drive. The end goal is that you can effectively navigate the app, as if you were using Google Drive directly. Under the hood, we will be working with the Google Drive API.

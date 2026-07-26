@@ -1,2 +1,7 @@
 .env
+
+# Compiled python caches 
+backend/__pycache__/
+
+# Node modules 
 frontend/node_modules/
