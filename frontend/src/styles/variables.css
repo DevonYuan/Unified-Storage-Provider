@@ -1,0 +1,35 @@
+/* Shared color variables for OmniDrive */
+:root {
+  --bg: #080808;
+  --surface: #101010;
+  --fg: #fafafa;
+  --fg-muted: #737373;
+  --fg-subtle: #404040;
+  --border: #262626;
+  --accent: #22c55e;
+  --accent-blue: #3b82f6;
+}
+
+/* Base font and reset utilities */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+}

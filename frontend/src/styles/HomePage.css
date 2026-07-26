@@ -1,0 +1,109 @@
+@import './variables.css';
+
+.home-page {
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+}
+
+.home-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.home-page__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-page__logo {
+  width: 28px;
+  height: 28px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-page__logo-icon {
+  color: var(--fg-muted);
+}
+
+.home-page__brand-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.home-page__signout {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.2s;
+}
+
+.home-page__signout:hover {
+  color: var(--fg);
+}
+
+.home-page__signout-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.home-page__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.home-page__welcome {
+  text-align: center;
+  max-width: 360px;
+}
+
+.home-page__signed-in-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+  margin-bottom: 12px;
+}
+
+.home-page__welcome-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+
+.home-page__welcome-text {
+  font-size: 14px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.home-page__user-id {
+  font-size: 11px;
+  color: var(--fg-subtle);
+  font-family: 'Geist Mono', monospace;
+  margin-top: 8px;
+}
