@@ -156,8 +156,8 @@ export function LoginPage() {
         </div>
 
         <h1 style={{ fontSize: 60, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 24 }}>
-          <span style={{ color: C.fg, display: 'block' }}>Your clouds.</span>
-          <span style={{ color: C.fgMuted, display: 'block' }}>All in one place.</span>
+          <span style={{ color: C.fg, display: 'block' }}>Your files.</span>
+          <span style={{ color: C.fgMuted, display: 'block' }}>Not your folders.</span>
         </h1>
 
         <p style={{ fontSize: 15, color: C.fgMuted, lineHeight: 1.65, maxWidth: 460, marginBottom: 40 }}>
@@ -193,7 +193,7 @@ export function LoginPage() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.fgSubtle; e.currentTarget.style.color = C.fg }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.fgMuted }}
           >
-            Get set up
+            Explore the demo
           </button>
         </div>
 

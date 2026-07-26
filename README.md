@@ -1,10 +1,15 @@
 # OmniDrive: Unified Cloud Storage Pool
 
 This is a personal tool that I made for myself, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, and unified virtual storage pool.
+This is a personal tool that I made for myself, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, and unified virtual storage pool.
 
 Instead of jumping between different interfaces and managing fragmented storage limits, OmniDrive acts as a router and abstraction layer. It presents a single interface where your total available storage is the sum of your connected providers, automatically handling distribution and retrieval across APIs without costing a dime in infrastructure fees.
 
 OmniDrive is a fully local, single-user desktop app. There is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
+
+OmniDrive is a fully local, single-user desktop app. There is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
+
+## Tech Stack
 
 ## Tech Stack
 
@@ -12,6 +17,9 @@ OmniDrive is a fully local, single-user desktop app. There is no login, no accou
 - Backend framework: FastAPI
 - Managing Google Drive: Google Drive API
 - Managing Microsoft: Microsoft Graph Files API
+- Local metadata storage: SQLite (via SQLAlchemy), with Alembic for schema migrations
+- Secret storage: `keyring` (delegates to the OS credential store — Keychain on macOS, Credential Manager on Windows, Secret Service/libsecret on Linux)
+- App data directory resolution: `platformdirs`
 - Local metadata storage: SQLite (via SQLAlchemy), with Alembic for schema migrations
 - Secret storage: `keyring` (delegates to the OS credential store — Keychain on macOS, Credential Manager on Windows, Secret Service/libsecret on Linux)
 - App data directory resolution: `platformdirs`
@@ -41,6 +49,9 @@ Phase 4: <br>
 
 We will elaborate more on this in separate documents.
 
+
+We will elaborate more on this in separate documents.
+
 ### Phase 1 - Skeleton
 Build a working skeleton of a web app. Logging in and out are the only features. 
 
@@ -48,6 +59,7 @@ Build a working skeleton of a web app. Logging in and out are the only features.
 Users store their required data locally — no authentication, no accounts, no data collection. This phase includes standing up the local SQLite schema and the keyring-based secret storage that later phases will build on. We will also add support for Google Drive. The end goal is that you can effectively navigate the app, as if you were using Google Drive directly. Under the hood, we will be working with the Google Drive API.
 
 ### Phase 3 - Microsoft OneDrive Integration
+Add support for Microsoft OneDrive. The end goal is that you can effectively navigate the app, as if you were using OneDrive directly. Under the hood, we will be working with the Microsoft Graph Files API. Note that at the end of the phase the user should be able to choose which provider they are using.
 Add support for Microsoft OneDrive. The end goal is that you can effectively navigate the app, as if you were using OneDrive directly. Under the hood, we will be working with the Microsoft Graph Files API. Note that at the end of the phase the user should be able to choose which provider they are using.
 
 ### Phase 4 - Unified Storage Pool
