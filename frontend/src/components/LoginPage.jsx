@@ -136,11 +136,6 @@ export function LoginPage() {
           </div>
           <span style={{ fontSize: 13, fontWeight: 500, color: C.fg }}>OmniDrive</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-          {['Features', 'Providers', 'Pricing'].map(item => (
-            <span key={item} style={{ fontSize: 13, color: C.fgMuted, cursor: 'default' }}>{item}</span>
-          ))}
-        </div>
       </nav>
 
       <main style={{
@@ -161,8 +156,8 @@ export function LoginPage() {
         </div>
 
         <h1 style={{ fontSize: 60, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 24 }}>
-          <span style={{ color: C.fg, display: 'block' }}>Your files.</span>
-          <span style={{ color: C.fgMuted, display: 'block' }}>Not your folders.</span>
+          <span style={{ color: C.fg, display: 'block' }}>Your clouds.</span>
+          <span style={{ color: C.fgMuted, display: 'block' }}>All in one place.</span>
         </h1>
 
         <p style={{ fontSize: 15, color: C.fgMuted, lineHeight: 1.65, maxWidth: 460, marginBottom: 40 }}>
@@ -183,7 +178,7 @@ export function LoginPage() {
             onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
             onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
           >
-            Get started
+            Open OmniDrive
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M2 6.5H11M11 6.5L7.5 3M11 6.5L7.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -198,7 +193,7 @@ export function LoginPage() {
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.fgSubtle; e.currentTarget.style.color = C.fg }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.fgMuted }}
           >
-            Explore the demo
+            Get set up
           </button>
         </div>
 

@@ -1,0 +1,2 @@
+# Notes for Phase 2 
+- A note on data storage: In this phase we will only store OAuth tokens so that the user does not have to connect Google Drive every single time. For phase 3, I will make sure to include a similar note for whatever the equivalent credentials are in MS graph files. 

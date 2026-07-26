@@ -1,0 +1,4 @@
+# Notes for Phase 1
+- Lesson Learned: SQLite is a database engine that runs inside the application process. There is no separate server to install, start or manage. The entire database is just a single file on disk (e.g omnidrive.db). The backend talks to it directly through a library. There is no network connection, no username/password, and no separate process to keep alive. 
+- We do not need to set up the SQLLite database in this phase, that can come later. 
+- As of July 25, 2026: I created a design via vercel v0, but now I am refactoring the code so that the styles can be stored in several .css files. 
