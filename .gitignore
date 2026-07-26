@@ -4,5 +4,8 @@
 backend/__pycache__/
 backend/routers/__pycache__/
 
+# Server log 
+backend/server.log
+
 # Node modules 
 frontend/node_modules/
