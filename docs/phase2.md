@@ -1,2 +1,4 @@
 # Notes for Phase 2 
 - A note on data storage: In this phase we will only store OAuth tokens so that the user does not have to connect Google Drive every single time. For phase 3, I will make sure to include a similar note for whatever the equivalent credentials are in MS graph files. 
+- Lesson Learned: Keyring is a python library that is very useful for storing credentials locally. Essentially, keyring allows me to delegate the process of encrypting, storing and retrieving sensitive information to my OS so that I do not have to handle it myself. 
+- Path to the DB is safe to expose since the data is stored locally. 
