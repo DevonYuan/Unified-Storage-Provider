@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { authApi } from '../api/client.js'
 
 const AuthContext = createContext(undefined)
@@ -9,7 +9,7 @@ export function AuthProvider({ children }) {
   const [isGoogleConnected, setIsGoogleConnected] = useState(false)
   const [isCheckingConnection, setIsCheckingConnection] = useState(false)
 
-  const checkGoogleConnection = async () => {
+  const checkGoogleConnection = useCallback(async () => {
     setIsCheckingConnection(true)
     try {
       console.log('Checking Google Drive connection...')
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     } finally {
       setIsCheckingConnection(false)
     }
-  }
+  }, [])
 
   const login = () => {
     const newUser = {

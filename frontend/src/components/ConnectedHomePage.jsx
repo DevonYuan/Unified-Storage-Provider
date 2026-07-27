@@ -2,7 +2,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { HardDrive, LogOut } from 'lucide-react'
 import '../styles/HomePage.css'
 
-export function HomePage() {
+export function ConnectedHomePage() {
   const { user, logout } = useAuth()
 
   return (
@@ -25,10 +25,6 @@ export function HomePage() {
       <main className="home-page__main">
         <div className="home-page__welcome">
           <p className="home-page__signed-in-label">Signed in</p>
-          <h2 className="home-page__welcome-title">Welcome back.</h2>
-          <p className="home-page__welcome-text">
-            Your unified cloud storage workspace is on its way. Connect your providers to get started.
-          </p>
           <p className="home-page__user-id">{user.id}</p>
         </div>
       </main>
