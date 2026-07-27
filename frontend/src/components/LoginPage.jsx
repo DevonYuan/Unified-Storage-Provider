@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext.jsx'
 import { HardDrive } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import '../styles/LoginPage.css'
 
 function ProviderBadges() {
@@ -67,9 +67,9 @@ export function LoginPage() {
               <path d="M2 6.5H11M11 6.5L7.5 3M11 6.5L7.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button className="login-page__btn-secondary">
+          <Link to="/signup" className="login-page__btn-secondary">
             Get set up
-          </button>
+          </Link>
         </div>
 
         <ProviderBadges />

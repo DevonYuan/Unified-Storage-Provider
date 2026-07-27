@@ -1,4 +1,8 @@
+# Environment variables
 .env
+
+# Claude setup
+.claude/
 
 # Compiled python caches 
 backend/__pycache__/

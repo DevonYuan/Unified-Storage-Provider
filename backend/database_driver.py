@@ -3,14 +3,21 @@
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from platformdirs import user_data_dir
+import os
+import sys
 
 # App configuration
 APP_NAME = "OmniDrive"
-APP_AUTHOR = "OmniDrive"
 
 # Get the OS-appropriate app data directory
-DATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
+if os.name == 'nt':  # Windows
+    # On Windows, use AppData/Local/OmniDrive directly
+    DATA_DIR = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~\\AppData\\Local'))) / APP_NAME
+else:
+    # On Unix-like systems, use platformdirs for proper XDG compliance
+    from platformdirs import user_data_dir
+    DATA_DIR = Path(user_data_dir(APP_NAME))
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # SQLite database path
@@ -20,6 +27,7 @@ DATABASE_URL = f"sqlite:///{DB_PATH}"
 # Create engine with proper SQLite settings
 engine = create_engine(
     DATABASE_URL,
+    
     connect_args={"check_same_thread": False},  # Required for SQLite with FastAPI
     echo=False,  # Set to True for SQL debugging
 )
