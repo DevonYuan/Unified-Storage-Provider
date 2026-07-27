@@ -27,99 +27,30 @@ function ProviderBadges() {
   )
 }
 
-// Auth callback page - handles OAuth redirect from Google
-function AuthCallbackPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
-  const [errorMessage, setErrorMessage] = useState('')
-
-  useEffect(() => {
-    async function handleCallback() {
-      const code = searchParams.get('code')
-      const state = searchParams.get('state')
-      const error = searchParams.get('error')
-
-      if (error) {
-        setStatus('error')
-        setErrorMessage(`OAuth error: ${error}`)
-        return
-      }
-
-      if (!code || !state) {
-        setStatus('error')
-        setErrorMessage('Missing code or state parameter')
-        return
-      }
-
-      const redirectUri = `${window.location.origin}/auth/callback`
-
-      try {
-        await authApi.handleOAuthCallback('google_drive', code, state, redirectUri)
-        setStatus('success')
-        // Redirect back to signup page after brief delay
-        setTimeout(() => navigate('/signup', { replace: true }), 1500)
-      } catch (err) {
-        setStatus('error')
-        setErrorMessage(err.message || 'Failed to connect Google Drive')
-      }
-    }
-
-    handleCallback()
-  }, [searchParams, navigate])
-
-  if (status === 'loading') {
-    return (
-      <div className="signup-page signup-page__unauthenticated">
-        <main className="signup-page__content">
-          <div className="signup-page__callback-loading">
-            <Loader2 className="signup-page__callback-spinner" size={40} />
-            <p>Completing Google Drive connection...</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (status === 'success') {
-    return (
-      <div className="signup-page signup-page__unauthenticated">
-        <main className="signup-page__content">
-          <div className="signup-page__callback-success">
-            <Check className="signup-page__callback-icon" size={48} />
-            <h2>Google Drive Connected!</h2>
-            <p>Redirecting you back...</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="signup-page signup-page__unauthenticated">
-      <main className="signup-page__content">
-        <div className="signup-page__callback-error">
-          <AlertCircle className="signup-page__callback-icon" size={48} />
-          <h2>Connection Failed</h2>
-          <p>{errorMessage}</p>
-          <button
-            onClick={() => navigate('/signup', { replace: true })}
-            className="signup-page__retry-btn"
-          >
-            Try Again
-          </button>
-        </div>
-      </main>
-    </div>
-  )
-}
-
 export function SignUpPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [googleConnected, setGoogleConnected] = useState(false)
   const [microsoftConnected, setMicrosoftConnected] = useState(false)
   const [connecting, setConnecting] = useState(null)
   const [accounts, setAccounts] = useState([])
+  const [error, setError] = useState(null)
+
+  // Check for redirect from backend OAuth callback
+  useEffect(() => {
+    const oauthError = searchParams.get('error')
+    const oauthSuccess = searchParams.get('success')
+
+    if (oauthError) {
+      setError(decodeURIComponent(oauthError))
+      // Clean up URL
+      navigate('/signup', { replace: true })
+    } else if (oauthSuccess) {
+      // Success - reload accounts
+      setError(null)
+      navigate('/signup', { replace: true })
+    }
+  }, [searchParams, navigate])
 
   // Load connected accounts on mount
   useEffect(() => {
@@ -145,7 +76,8 @@ export function SignUpPage() {
     setConnecting('google')
 
     try {
-      const redirectUri = `${window.location.origin}/auth/callback`
+      // Use backend's registered redirect URI (must match Google Cloud Console)
+      const redirectUri = 'http://127.0.0.1:8000/auth/google/callback'
       const { auth_url, state } = await authApi.startGoogleOAuth(redirectUri)
 
       // Store state in sessionStorage for validation on callback
@@ -207,6 +139,16 @@ export function SignUpPage() {
         <p className="signup-page__subheadline">
           Connect Google Drive and OneDrive in seconds. One search. One workspace. Zero folder chaos.
         </p>
+
+        {error && (
+          <div className="signup-page__error-banner">
+            <AlertCircle size={16} />
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="signup-page__error-dismiss">
+              ×
+            </button>
+          </div>
+        )}
 
         <div className="signup-page__connect-section">
           <div className="signup-page__connect-card">
@@ -300,5 +242,3 @@ export function SignUpPage() {
     </div>
   )
 }
-
-export { AuthCallbackPage }
