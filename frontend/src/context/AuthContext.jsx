@@ -1,10 +1,36 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
+import { authApi } from '../api/client.js'
 
 const AuthContext = createContext(undefined)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false)
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false)
+
+  const checkGoogleConnection = async () => {
+    setIsCheckingConnection(true)
+    try {
+      console.log('Checking Google Drive connection...')
+      const response = await authApi.listAccounts()
+      console.log('Accounts response:', response)
+      
+      // Handle different response structures
+      const accounts = Array.isArray(response) ? response : (response.accounts || [])
+      console.log('Parsed accounts array:', accounts)
+      
+      const googleAccount = accounts.find(acc => acc.provider === 'google_drive')
+      console.log('Google account found:', googleAccount)
+      setIsGoogleConnected(!!googleAccount)
+      console.log('isGoogleConnected set to:', !!googleAccount)
+    } catch (error) {
+      console.error('Failed to check Google Drive connection:', error)
+      setIsGoogleConnected(false)
+    } finally {
+      setIsCheckingConnection(false)
+    }
+  }
 
   const login = () => {
     const newUser = {
@@ -18,10 +44,11 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem('omnidrive_user')
+    setIsGoogleConnected(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isGoogleConnected, isCheckingConnection, checkGoogleConnection, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
