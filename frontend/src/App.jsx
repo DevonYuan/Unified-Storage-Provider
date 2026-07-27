@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { LoginPage } from './components/LoginPage.jsx'
-import { SignUpPage } from './components/SignUpPage.jsx'
+import { SignUpPage, AuthCallbackPage } from './components/SignUpPage.jsx'
 import { HomePage } from './components/HomePage.jsx'
 
 function ProtectedRoute({ children }) {
@@ -39,6 +39,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

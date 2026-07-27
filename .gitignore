@@ -7,6 +7,7 @@
 # Compiled python caches 
 backend/__pycache__/
 backend/routers/__pycache__/
+backend/services/__pycache__/
 
 # Server log 
 backend/server.log

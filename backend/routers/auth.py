@@ -8,6 +8,15 @@ from datetime import datetime
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
+from services.google_oauth import (
+    build_authorization_url,
+    validate_state,
+    exchange_code_for_tokens,
+    get_user_info,
+    store_refresh_token,
+    get_keyring_key,
+    GoogleOAuthError,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -52,25 +61,97 @@ def start_oauth(request: OAuthStartRequest):
     Initiate OAuth flow for a cloud storage provider.
     Returns the authorization URL and state parameter.
     """
-    # TODO: Implement OAuth flow for Google Drive and Microsoft OneDrive
-    # This will be implemented in Phase 2 (Google) and Phase 3 (OneDrive)
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"OAuth flow for {request.provider.value} not implemented yet"
-    )
+    if request.provider != ProviderType.GOOGLE_DRIVE:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"OAuth flow for {request.provider.value} not implemented yet"
+        )
+
+    redirect_uri = str(request.redirect_uri)
+    auth_url, state = build_authorization_url(redirect_uri)
+
+    return OAuthStartResponse(auth_url=auth_url, state=state)
 
 
 @router.post("/oauth/callback")
-def oauth_callback(request: OAuthCallbackRequest):
+def oauth_callback(request: OAuthCallbackRequest, db: Session = Depends(get_db)):
     """
     Handle OAuth callback from provider.
     Exchanges authorization code for tokens and stores them securely.
     """
-    # TODO: Implement OAuth callback handling
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"OAuth callback for {request.provider.value} not implemented yet"
-    )
+    if request.provider != ProviderType.GOOGLE_DRIVE:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"OAuth callback for {request.provider.value} not implemented yet"
+        )
+
+    # Validate state parameter (CSRF protection)
+    redirect_uri = validate_state(request.state)
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state parameter"
+        )
+
+    # Verify redirect URI matches
+    if str(request.redirect_uri) != redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Redirect URI mismatch"
+        )
+
+    try:
+        # Exchange authorization code for tokens
+        import asyncio
+        token_response = asyncio.run(exchange_code_for_tokens(request.code, redirect_uri))
+
+        # Get user info from Google
+        user_info = asyncio.run(get_user_info(token_response.access_token))
+
+        # Store refresh token securely in keyring
+        keyring_key = get_keyring_key(user_info.id)
+        if token_response.refresh_token:
+            store_refresh_token(keyring_key, token_response.refresh_token)
+
+        # Calculate token expiry
+        from datetime import timedelta
+        token_expiry = datetime.utcnow() + timedelta(seconds=token_response.expires_in)
+
+        # Create or update connected account
+        existing_account = db.query(ConnectedAccount).filter(
+            ConnectedAccount.provider == ProviderType.GOOGLE_DRIVE,
+            ConnectedAccount.keyring_key == keyring_key
+        ).first()
+
+        if existing_account:
+            account = existing_account
+            account.display_name = user_info.email
+            account.token_expiry = token_expiry
+            account.updated_at = datetime.utcnow()
+        else:
+            account = ConnectedAccount(
+                provider=ProviderType.GOOGLE_DRIVE,
+                display_name=user_info.email,
+                keyring_key=keyring_key,
+                token_expiry=token_expiry,
+            )
+            db.add(account)
+
+        db.commit()
+        db.refresh(account)
+
+        return AccountResponse.from_orm(account)
+
+    except GoogleOAuthError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"OAuth callback failed: {str(e)}"
+        )
 
 
 @router.get("/accounts", response_model=AccountListResponse)

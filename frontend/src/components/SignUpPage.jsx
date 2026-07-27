@@ -1,12 +1,15 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   HardDrive,
   Cloud,
   Check,
-  ArrowRight
+  ArrowRight,
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import '../styles/SignUpPage.css'
+import { authApi } from '../api/client.js'
 
 function ProviderBadges() {
   return (
@@ -24,19 +27,137 @@ function ProviderBadges() {
   )
 }
 
+// Auth callback page - handles OAuth redirect from Google
+function AuthCallbackPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [status, setStatus] = useState('loading') // 'loading' | 'success' | 'error'
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    async function handleCallback() {
+      const code = searchParams.get('code')
+      const state = searchParams.get('state')
+      const error = searchParams.get('error')
+
+      if (error) {
+        setStatus('error')
+        setErrorMessage(`OAuth error: ${error}`)
+        return
+      }
+
+      if (!code || !state) {
+        setStatus('error')
+        setErrorMessage('Missing code or state parameter')
+        return
+      }
+
+      const redirectUri = `${window.location.origin}/auth/callback`
+
+      try {
+        await authApi.handleOAuthCallback('google_drive', code, state, redirectUri)
+        setStatus('success')
+        // Redirect back to signup page after brief delay
+        setTimeout(() => navigate('/signup', { replace: true }), 1500)
+      } catch (err) {
+        setStatus('error')
+        setErrorMessage(err.message || 'Failed to connect Google Drive')
+      }
+    }
+
+    handleCallback()
+  }, [searchParams, navigate])
+
+  if (status === 'loading') {
+    return (
+      <div className="signup-page signup-page__unauthenticated">
+        <main className="signup-page__content">
+          <div className="signup-page__callback-loading">
+            <Loader2 className="signup-page__callback-spinner" size={40} />
+            <p>Completing Google Drive connection...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="signup-page signup-page__unauthenticated">
+        <main className="signup-page__content">
+          <div className="signup-page__callback-success">
+            <Check className="signup-page__callback-icon" size={48} />
+            <h2>Google Drive Connected!</h2>
+            <p>Redirecting you back...</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="signup-page signup-page__unauthenticated">
+      <main className="signup-page__content">
+        <div className="signup-page__callback-error">
+          <AlertCircle className="signup-page__callback-icon" size={48} />
+          <h2>Connection Failed</h2>
+          <p>{errorMessage}</p>
+          <button
+            onClick={() => navigate('/signup', { replace: true })}
+            className="signup-page__retry-btn"
+          >
+            Try Again
+          </button>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 export function SignUpPage() {
   const navigate = useNavigate()
   const [googleConnected, setGoogleConnected] = useState(false)
   const [microsoftConnected, setMicrosoftConnected] = useState(false)
   const [connecting, setConnecting] = useState(null)
+  const [accounts, setAccounts] = useState([])
+
+  // Load connected accounts on mount
+  useEffect(() => {
+    async function loadAccounts() {
+      try {
+        const data = await authApi.listAccounts()
+        setAccounts(data.accounts || [])
+        // Check if Google Drive is already connected
+        const googleAccount = data.accounts?.find(a => a.provider === 'google_drive')
+        if (googleAccount) {
+          setGoogleConnected(true)
+        }
+      } catch (err) {
+        console.error('Failed to load accounts:', err)
+      }
+    }
+    loadAccounts()
+  }, [])
 
   const handleGoogleDriveConnect = async () => {
     if (googleConnected) return
+
     setConnecting('google')
-    // Simulate connection process
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setGoogleConnected(true)
-    setConnecting(null)
+
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`
+      const { auth_url, state } = await authApi.startGoogleOAuth(redirectUri)
+
+      // Store state in sessionStorage for validation on callback
+      sessionStorage.setItem('oauth_state', state)
+
+      // Redirect to Google OAuth
+      window.location.href = auth_url
+    } catch (err) {
+      console.error('Failed to start Google OAuth:', err)
+      setConnecting(null)
+      alert(`Failed to start Google Drive connection: ${err.message}`)
+    }
   }
 
   const handleOneDriveConnect = async () => {
@@ -65,9 +186,9 @@ export function SignUpPage() {
           </div>
           <span className="signup-page__brand-name">OmniDrive</span>
         </div>
-        <Link to="/login" className="signup-page__signin-link">
+        <a href="/login" className="signup-page__signin-link">
           Sign in
-        </Link>
+        </a>
       </nav>
 
       <main className="signup-page__content">
@@ -106,15 +227,7 @@ export function SignUpPage() {
             >
               {connecting === 'google' ? (
                 <>
-                  <svg className="signup-page__btn-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle
-                      className="signup-page__spinner-path"
-                      cx="12" cy="12" r="5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <Loader2 className="signup-page__btn-spinner" size={16} />
                   Connecting…
                 </>
               ) : googleConnected ? (
@@ -149,15 +262,7 @@ export function SignUpPage() {
             >
               {connecting === 'microsoft' ? (
                 <>
-                  <svg className="signup-page__btn-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle
-                      className="signup-page__spinner-path"
-                      cx="12" cy="12" r="5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <Loader2 className="signup-page__btn-spinner" size={16} />
                   Connecting…
                 </>
               ) : microsoftConnected ? (
@@ -195,3 +300,5 @@ export function SignUpPage() {
     </div>
   )
 }
+
+export { AuthCallbackPage }

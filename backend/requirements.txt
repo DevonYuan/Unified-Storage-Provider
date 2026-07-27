@@ -12,16 +12,26 @@ platformdirs==4.2.1
 # Secret storage
 keyring==25.4.1
 
+# Configuration
+python-dotenv==1.0.0
+pydantic==2.7.4
+pydantic-settings==2.3.3
+
+# Caching
+cachetools==5.3.0
+
+# HTTP client
+httpx==0.27.0
+
 # Cloud provider APIs (Phase 2: Google Drive)
 google-api-python-client==2.137.0
+google-auth==2.23.0
+google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.2.0
-google-auth-oauthlib==1.2.0
 
 # Cloud provider APIs (Phase 3: Microsoft OneDrive)
 msal==1.31.1
-httpx==0.27.0
 
 # Development/Testing
 pytest==8.2.2
 pytest-asyncio==0.23.3
-httpx==0.27.0
