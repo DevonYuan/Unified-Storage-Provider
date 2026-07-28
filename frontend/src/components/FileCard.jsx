@@ -9,10 +9,6 @@ import {
   Archive,
   Code,
   File,
-  Star,
-  Star as StarFilled,
-  HardDrive,
-  Globe,
 } from 'lucide-react'
 
 function getCategoryIcon(category) {
@@ -35,9 +31,6 @@ function getCategoryIcon(category) {
 export function FileCard({
   file,
   viewMode = 'grid',
-  isFavorite = false,
-  onFavoriteToggle,
-  onNavigate,
   onOpen,
 }) {
   const category = file.category
@@ -47,72 +40,28 @@ export function FileCard({
   const handleClick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (isFolder && onNavigate) {
-      onNavigate(file.id)
-    } else if (!isFolder && onOpen) {
+    if (!isFolder && onOpen) {
       onOpen(file.id)
     }
   }
 
-  const handleFavoriteClick = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (onFavoriteToggle) {
-      onFavoriteToggle(file.id)
-    }
-  }
-
-  if (viewMode === 'list') {
-    return (
-      <div
-        className="file-card file-card--list"
-        onClick={handleClick}
-      >
-        <div className="file-card__origin" title="Google Drive" />
-        <div className="file-card__icon-wrapper">
-          <CategoryIcon size={24} />
-        </div>
-        <div className="file-card__info">
-          <h3 className="file-card__name" title={file.name}>{file.name}</h3>
-          <div className="file-card__meta">
-            <span>{file.size_formatted || (isFolder ? `${file.item_count ?? 0} items` : '—')}</span>
-            <span>{file.modified_time_formatted || '—'}</span>
-          </div>
-        </div>
-        <button
-          onClick={handleFavoriteClick}
-          className={`file-card__favorite ${isFavorite ? 'file-card__favorite--active' : ''}`}
-          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          {isFavorite ? <StarFilled className="file-card__star-icon" size={16} /> : <Star className="file-card__star-icon" size={16} />}
-        </button>
-      </div>
-    )
-  }
+  const iconSize = viewMode === 'list' ? 24 : 64
+  const contentClass = viewMode === 'list' ? 'file-card__content--list' : 'file-card__content'
 
   return (
     <article
-      className="file-card file-card--grid"
+      className={`file-card ${viewMode === 'list' ? 'file-card--list' : 'file-card--grid'}`}
       onClick={handleClick}
     >
       {/* Origin indicator - top left */}
       <div className="file-card__origin" title="Google Drive" />
 
-      {/* Favorite star - top right */}
-      <button
-        onClick={handleFavoriteClick}
-        className={`file-card__favorite ${isFavorite ? 'file-card__favorite--active' : ''}`}
-        aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-      >
-        {isFavorite ? <StarFilled className="file-card__star-icon" size={16} /> : <Star className="file-card__star-icon" size={16} />}
-      </button>
-
       {/* Card content */}
-      <div className="file-card__content">
+      <div className={contentClass}>
         {isFolder ? (
           // Folder: icon centered
           <div className="file-card__icon-wrapper">
-            <CategoryIcon size={64} />
+            <CategoryIcon size={iconSize} />
           </div>
         ) : file.category === 'image' && file.thumbnail_link ? (
           // Image: thumbnail top half
@@ -126,7 +75,7 @@ export function FileCard({
         ) : (
           // Other files: icon centered
           <div className="file-card__icon-wrapper">
-            <CategoryIcon size={64} />
+            <CategoryIcon size={iconSize} />
           </div>
         )}
 

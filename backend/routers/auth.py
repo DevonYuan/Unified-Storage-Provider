@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
@@ -31,13 +31,6 @@ class OAuthStartRequest(BaseModel):
 class OAuthStartResponse(BaseModel):
     auth_url: str
     state: str
-
-
-class OAuthCallbackRequest(BaseModel):
-    provider: ProviderType
-    code: str
-    state: str
-    redirect_uri: HttpUrl
 
 
 class AccountResponse(BaseModel):
@@ -76,7 +69,7 @@ def start_oauth(request: OAuthStartRequest):
 
 
 @router.get("/google/callback")
-def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
+async def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
     """
     Handle OAuth callback from Google (redirect endpoint).
     This is the actual redirect URI registered in Google Cloud Console.
@@ -101,11 +94,10 @@ def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
 
     try:
         # Exchange authorization code for tokens
-        import asyncio
-        token_response = asyncio.run(exchange_code_for_tokens(code, redirect_uri))
+        token_response = await exchange_code_for_tokens(code, redirect_uri)
 
         # Get user info from Google
-        user_info = asyncio.run(get_user_info(token_response.access_token))
+        user_info = await get_user_info(token_response.access_token)
 
         # Store refresh token securely in keyring
         keyring_key = get_keyring_key(user_info.id)
@@ -113,7 +105,6 @@ def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
             store_refresh_token(keyring_key, token_response.refresh_token)
 
         # Calculate token expiry
-        from datetime import timedelta
         token_expiry = datetime.utcnow() + timedelta(seconds=token_response.expires_in)
 
         # Create or update connected account
@@ -157,96 +148,11 @@ def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
         return RedirectResponse(url=frontend_url)
 
 
-@router.post("/oauth/callback")
-def oauth_callback(request: OAuthCallbackRequest, db: Session = Depends(get_db)):
-    """
-    Handle OAuth callback from provider.
-    Exchanges authorization code for tokens and stores them securely.
-    """
-    if request.provider != ProviderType.GOOGLE_DRIVE:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"OAuth callback for {request.provider.value} not implemented yet"
-        )
-
-    # Validate state parameter (CSRF protection)
-    redirect_uri = validate_state(request.state)
-    if not redirect_uri:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired OAuth state parameter"
-        )
-
-    # Verify redirect URI matches
-    if str(request.redirect_uri) != redirect_uri:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Redirect URI mismatch"
-        )
-
-    try:
-        # Exchange authorization code for tokens
-        import asyncio
-        token_response = asyncio.run(exchange_code_for_tokens(request.code, redirect_uri))
-
-        # Get user info from Google
-        user_info = asyncio.run(get_user_info(token_response.access_token))
-
-        # Store refresh token securely in keyring
-        keyring_key = get_keyring_key(user_info.id)
-        if token_response.refresh_token:
-            store_refresh_token(keyring_key, token_response.refresh_token)
-
-        # Calculate token expiry
-        from datetime import timedelta
-        token_expiry = datetime.utcnow() + timedelta(seconds=token_response.expires_in)
-
-        # Create or update connected account
-        existing_account = db.query(ConnectedAccount).filter(
-            ConnectedAccount.provider == ProviderType.GOOGLE_DRIVE,
-            ConnectedAccount.keyring_key == keyring_key
-        ).first()
-
-        if existing_account:
-            account = existing_account
-            account.display_name = user_info.email
-            account.access_token = token_response.access_token
-            account.refresh_token = token_response.refresh_token
-            account.token_expiry = token_expiry
-            account.updated_at = datetime.utcnow()
-        else:
-            account = ConnectedAccount(
-                provider=ProviderType.GOOGLE_DRIVE,
-                display_name=user_info.email,
-                keyring_key=keyring_key,
-                access_token=token_response.access_token,
-                refresh_token=token_response.refresh_token,
-                token_expiry=token_expiry,
-            )
-            db.add(account)
-
-        db.commit()
-        db.refresh(account)
-
-        return AccountResponse.from_orm(account)
-
-    except GoogleOAuthError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OAuth callback failed: {str(e)}"
-        )
-
-
 @router.get("/accounts", response_model=AccountListResponse)
 def list_accounts(db: Session = Depends(get_db)):
     """List all connected cloud storage accounts."""
     accounts = db.query(ConnectedAccount).all()
-    return {"accounts": accounts}
+    return {"accounts": [AccountResponse.model_validate(a) for a in accounts]}
 
 
 @router.get("/accounts/{account_id}", response_model=AccountResponse)
@@ -255,7 +161,7 @@ def get_account(account_id: int, db: Session = Depends(get_db)):
     account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    return account
+    return AccountResponse.model_validate(account)
 
 
 @router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)

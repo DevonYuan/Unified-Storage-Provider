@@ -8,7 +8,7 @@ from datetime import datetime
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
-from services.google_drive import list_drive_files, get_mime_type_category, format_file_size, format_modified_time, GoogleDriveError
+from services.google_drive import list_drive_files, GoogleDriveError
 
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
@@ -54,6 +54,103 @@ class FileListResponse(BaseModel):
     total_items: int
 
 
+def get_mime_type_category(mime_type: str) -> str:
+    """Categorize a MIME type into a display category."""
+    if mime_type == "application/vnd.google-apps.folder":
+        return "folder"
+    elif mime_type.startswith("image/"):
+        return "image"
+    elif mime_type.startswith("video/"):
+        return "video"
+    elif mime_type.startswith("audio/"):
+        return "audio"
+    elif mime_type == "application/pdf":
+        return "pdf"
+    elif mime_type in [
+        "application/vnd.google-apps.document",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "text/plain",
+        "text/markdown",
+    ]:
+        return "document"
+    elif mime_type in [
+        "application/vnd.google-apps.spreadsheet",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "text/csv",
+    ]:
+        return "spreadsheet"
+    elif mime_type in [
+        "application/vnd.google-apps.presentation",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "application/vnd.ms-powerpoint",
+    ]:
+        return "presentation"
+    elif mime_type in [
+        "application/zip",
+        "application/x-rar-compressed",
+        "application/x-7z-compressed",
+        "application/gzip",
+        "application/x-tar",
+    ]:
+        return "archive"
+    elif mime_type in [
+        "application/javascript",
+        "application/typescript",
+        "application/json",
+        "text/html",
+        "text/css",
+        "text/x-python",
+        "text/x-java-source",
+        "text/x-c",
+        "text/x-cpp",
+    ]:
+        return "code"
+    else:
+        return "other"
+
+
+def format_file_size(size_bytes: int) -> str:
+    """Format file size in human-readable format."""
+    if size_bytes is None:
+        return ""
+
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if size_bytes < 1024:
+            if size_bytes >= 10 or unit == "B":
+                return f"{size_bytes:.1f} {unit}"
+            return f"{size_bytes:.0f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} PB"
+
+
+def format_modified_time(modified_time: str) -> str:
+    """Format RFC3339 timestamp to relative time or short date."""
+    if not modified_time:
+        return ""
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(modified_time.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        diff = now - dt
+
+        if diff.days > 365:
+            return dt.strftime("%b %d, %Y")
+        elif diff.days > 30:
+            return dt.strftime("%b %d")
+        elif diff.days > 0:
+            return f"{diff.days}d ago"
+        elif diff.seconds > 3600:
+            return f"{diff.seconds // 3600}h ago"
+        elif diff.seconds > 60:
+            return f"{diff.seconds // 60}m ago"
+        else:
+            return "Just now"
+    except Exception:
+        return modified_time[:10] if modified_time else ""
+
+
 @router.get("", response_model=StorageListResponse)
 def list_storage_accounts(db: Session = Depends(get_db)):
     """List all connected storage accounts with their info."""
@@ -93,17 +190,21 @@ async def list_files(account_id: int, parent_id: str = "root", page_size: int = 
 
     items = []
     for f in files:
-        category = get_mime_type_category(f.get("mimeType", ""))
+        mime_type = f.get("mimeType", "")
+        category = get_mime_type_category(mime_type)
         is_folder = category == "folder"
+        size = f.get("size")
+        modified_time = f.get("modifiedTime")
+
         items.append(FileItem(
             id=f.get("id", ""),
             name=f.get("name", ""),
-            mime_type=f.get("mimeType", ""),
+            mime_type=mime_type,
             category=category,
-            size=f.get("size") if f.get("size") else None,
-            size_formatted=format_file_size(f.get("size")) if f.get("size") else None,
-            modified_time=f.get("modifiedTime"),
-            modified_time_formatted=format_modified_time(f.get("modifiedTime", "")),
+            size=size if size else None,
+            size_formatted=format_file_size(int(size)) if size else None,
+            modified_time=modified_time,
+            modified_time_formatted=format_modified_time(modified_time) if modified_time else None,
             thumbnail_link=f.get("thumbnailLink"),
             web_view_link=f.get("webViewLink"),
             is_folder=is_folder,

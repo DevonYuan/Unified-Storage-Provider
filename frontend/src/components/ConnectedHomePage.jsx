@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { storageApi } from '../api/client.js'
 import {
@@ -8,12 +8,9 @@ import {
   ArrowUpDown,
   Grid,
   List,
-  Upload,
   ChevronDown,
   Loader2,
   Folder,
-  Search,
-  ChevronRight,
 } from 'lucide-react'
 import { FileCard } from './FileCard.jsx'
 import '../styles/ConnectedHomePage.css'
@@ -26,31 +23,23 @@ export function ConnectedHomePage() {
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('recent')
   const [filterBy, setFilterBy] = useState('all')
-  const [currentFolderId, setCurrentFolderId] = useState('root')
-  const [folderStack, setFolderStack] = useState([])
-  const [showFilterMenu, setShowFilterMenu] = useState(false)
-  const [showSortMenu, setShowSortMenu] = useState(false)
 
-  // Filter and sort options
+  // Filter and sort options - simplified to only what API supports
   const filterOptions = [
     { value: 'all', label: 'All files' },
     { value: 'folder', label: 'Folders' },
     { value: 'image', label: 'Images' },
     { value: 'video', label: 'Videos' },
     { value: 'document', label: 'Documents' },
-    { value: 'spreadsheet', label: 'Spreadsheets' },
-    { value: 'presentation', label: 'Presentations' },
-    { value: 'pdf', label: 'PDFs' },
   ]
 
   const sortOptions = [
     { value: 'recent', label: 'Recent' },
     { value: 'name', label: 'Name' },
     { value: 'size', label: 'Size' },
-    { value: 'modified', label: 'Modified' },
   ]
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = async () => {
     if (!isGoogleConnected) {
       setLoading(false)
       return
@@ -71,8 +60,8 @@ export function ConnectedHomePage() {
         return
       }
 
-      // Fetch files from backend API
-      const response = await storageApi.listFiles(googleAccount.account_id, currentFolderId)
+      // Fetch files from backend API (root folder only for MVP)
+      const response = await storageApi.listFiles(googleAccount.account_id, 'root')
       const fileItems = response.items || []
 
       // Transform API response to match FileCard expectations
@@ -96,11 +85,11 @@ export function ConnectedHomePage() {
     } finally {
       setLoading(false)
     }
-  }, [isGoogleConnected, currentFolderId])
+  }
 
   useEffect(() => {
     fetchFiles()
-  }, [fetchFiles])
+  }, [isGoogleConnected])
 
   useEffect(() => {
     checkGoogleConnection()
@@ -122,11 +111,6 @@ export function ConnectedHomePage() {
         if (a.size === null) return 1
         if (b.size === null) return -1
         return b.size - a.size
-      case 'modified':
-        if (!a.modified_time && !b.modified_time) return 0
-        if (!a.modified_time) return 1
-        if (!b.modified_time) return -1
-        return new Date(b.modified_time) - new Date(a.modified_time)
       case 'recent':
       default:
         if (!a.modified_time && !b.modified_time) return 0
@@ -136,41 +120,9 @@ export function ConnectedHomePage() {
     }
   })
 
-  const handleNavigate = (folderId) => {
-    const folder = files.find(f => f.id === folderId)
-    if (folder) {
-      setFolderStack(prev => [...prev, { id: currentFolderId, name: currentFolderId === 'root' ? 'All files' : folder.name }])
-      setCurrentFolderId(folderId)
-    }
-  }
-
-  const handleGoBack = () => {
-    if (folderStack.length > 0) {
-      const previous = folderStack[folderStack.length - 1]
-      setFolderStack(prev => prev.slice(0, -1))
-      setCurrentFolderId(previous.id)
-    }
-  }
-
-  const handleOpenFile = (fileId) => {
-    const file = files.find(f => f.id === fileId)
-    if (file?.web_view_link) {
-      window.open(file.web_view_link, '_blank')
-    }
-  }
-
-  const handleFavoriteToggle = (fileId) => {
-    // TODO: Implement favorite toggle
-    console.log('Toggle favorite:', fileId)
-  }
-
   const itemCount = sortedFiles.length
   const folderCount = sortedFiles.filter(f => f.is_folder).length
   const fileCount = itemCount - folderCount
-
-  const breadcrumb = currentFolderId === 'root'
-    ? [{ id: 'root', name: 'All files' }]
-    : [...folderStack, { id: currentFolderId, name: files.find(f => f.id === currentFolderId)?.name || 'Folder' }]
 
   return (
     <div className="connected-home-page">
@@ -183,32 +135,12 @@ export function ConnectedHomePage() {
           <span className="connected-home-page__brand-name">OmniDrive</span>
         </div>
 
-        {/* Breadcrumbs */}
-        <nav className="connected-home-page__breadcrumbs" aria-label="Folder navigation">
-          <ol className="connected-home-page__breadcrumb-list">
-            {breadcrumb.map((crumb, index) => (
-              <li key={crumb.id} className="connected-home-page__breadcrumb-item">
-                {index > 0 && (
-                  <ChevronRight className="connected-home-page__breadcrumb-separator" size={14} />
-                )}
-                <button
-                  onClick={() => index === breadcrumb.length - 1 ? null : index === breadcrumb.length - 2 ? handleGoBack() : setCurrentFolderId(crumb.id)}
-                  className={`connected-home-page__breadcrumb-link ${index === breadcrumb.length - 1 ? 'connected-home-page__breadcrumb-link--current' : ''}`}
-                  disabled={index === breadcrumb.length - 1}
-                >
-                  {crumb.name}
-                </button>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
         <div className="connected-home-page__actions">
           <button
-            onClick={checkGoogleConnection}
+            onClick={fetchFiles}
             disabled={loading}
             className="connected-home-page__refresh"
-            aria-label="Refresh connection"
+            aria-label="Refresh files"
           >
             <Loader2 className={`connected-home-page__refresh-icon ${loading ? 'connected-home-page__refresh-icon--spinning' : ''}`} size={16} />
           </button>
@@ -230,7 +162,7 @@ export function ConnectedHomePage() {
           <div className="connected-home-page__title-section">
             <h1 className="connected-home-page__title">All files</h1>
             <p className="connected-home-page__subtitle">
-              {itemCount} item{itemCount !== 1 ? 's' : ''} · sorted by {sortOptions.find(s => s.value === sortBy)?.label || 'recent'}
+              {itemCount} item{itemCount !== 1 ? 's' : ''} · {folderCount} folder{folderCount !== 1 ? 's' : ''} · {fileCount} file{fileCount !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -317,12 +249,6 @@ export function ConnectedHomePage() {
                 <List className="connected-home-page__view-icon" size={16} />
               </button>
             </div>
-
-            {/* Upload button */}
-            <button className="connected-home-page__upload-btn">
-              <Upload className="connected-home-page__upload-icon" size={16} />
-              Upload
-            </button>
           </div>
         </div>
 
@@ -342,8 +268,8 @@ export function ConnectedHomePage() {
           ) : sortedFiles.length === 0 ? (
             <div className="connected-home-page__empty">
               <Folder className="connected-home-page__empty-icon" size={64} />
-              <h2>This folder is empty</h2>
-              <p>Drag files here or click Upload to get started</p>
+              <h2>No files found</h2>
+              <p>Connect Google Drive to see your files</p>
             </div>
           ) : (
             <div
@@ -356,9 +282,7 @@ export function ConnectedHomePage() {
                   key={file.id}
                   file={file}
                   viewMode={viewMode}
-                  onNavigate={handleNavigate}
-                  onOpen={handleOpenFile}
-                  onFavoriteToggle={handleFavoriteToggle}
+                  onOpen={(fileId) => handleOpenFile(fileId, sortedFiles)}
                 />
               ))}
             </div>
@@ -367,4 +291,12 @@ export function ConnectedHomePage() {
       </main>
     </div>
   )
+}
+
+// Handle opening file/folder - moved inside component
+function handleOpenFile(fileId, files) {
+  const file = files.find(f => f.id === fileId)
+  if (file?.web_view_link) {
+    window.open(file.web_view_link, '_blank')
+  }
 }

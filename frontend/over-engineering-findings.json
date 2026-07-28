@@ -1,0 +1,233 @@
+[
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 21,
+    "pattern": "Excessive State Management",
+    "description": "7 useState hooks for UI state (viewMode, sortBy, filterBy, currentFolderId, folderStack, showFilterMenu, showSortMenu) plus filtered/sorted computed values that could be derived. All UI state lives in one component creating a god component.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 34,
+    "pattern": "Premature Generalization - Filter Options",
+    "description": "8 filter options defined (all, folder, image, video, document, spreadsheet, presentation, pdf) but Google Drive API returns limited categories. Many filter options likely never match real API data (e.g. 'spreadsheet', 'presentation' are Google-specific MIME types not generic categories).",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 46,
+    "pattern": "Premature Generalization - Sort Options",
+    "description": "4 sort options (recent, name, size, modified) but only 'recent' and 'name' are commonly used in file managers. 'size' and 'modified' add complexity with null handling for folders (lines 120-129) that may never be used.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    line: 29,
+    "pattern": "Premature Generalization - View Modes",
+    "description": "Two view modes (grid/list) with full CSS support, responsive breakpoints, and mobile hide logic for list view (line 736-737). List view is hidden on mobile (line 735-37) but all code paths maintained. Premature responsive design for MVP.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 139,
+    "pattern": "Premature Generalization - Folder Navigation",
+    "description": "Full folder navigation stack (folderStack, currentFolderId, breadcrumbs, handleNavigate, handleGoBack) implemented but backend only supports Google Drive root folder listing. No API for folder traversal exists in storageApi.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 162,
+    "pattern": "Speculative Feature - Favorites",
+    "description": "handleFavoriteToggle with TODO comment (line 163), favorite UI rendered in FileCard (star button, isFavorite prop) but no backend API for favorites exists. Complete speculative feature with UI, state, and handlers.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 155,
+    "pattern": "Speculative Feature - File Open",
+    "description": "handleOpenFile uses web_view_link from Google Drive but no integration with preview/preview API. Opens in new tab only - placeholder for future preview feature.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 240,
+    "pattern": "Excessive Indirection - Dropdown Components",
+    "description": "Two custom dropdown implementations (filter/sort) with identical pattern: trigger button, state for open/close, menu with role/listbox, keyboard navigation via buttons. Duplicated 60+ lines of nearly identical JSX. Could be a reusable component but isn't.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 301,
+    "pattern": "Excessive Indirection - View Toggle",
+    "description": "View toggle implemented as two buttons with aria-pressed, role/group, custom CSS classes for active state. Over-engineered for a simple binary toggle. Could be a single toggle button or select.",
+    "severity": "low"
+  },
+  {
+    "file": "src/components/FileCard.jsx",
+    "line": 18,
+    "pattern": "Unnecessary Abstraction - Icon Mapping",
+    "description": "getCategoryIcon function maps 11 categories to Lucide icons but only 'folder', 'image', and 'other' are used (Google Drive categories). 8 unused icon mappings (video, audio, pdf, document, spreadsheet, presentation, archive, code).",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/FileCard.jsx",
+    "line": 45,
+    "pattern": "Premature Generalization - View Modes",
+    "description": "FileCard renders completely different JSX for grid vs list view (lines 65-150). Two completely different render paths in one component. Violates single responsibility. Could be two separate components (FileCardGrid, FileCardList).",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/FileCard.jsx",
+    "line": 71,
+    "pattern": "Premature Generalization - Origin Indicator",
+    "description": "Hardcoded 'Google Drive' origin indicator (line 99, title='Google Drive') but component accepts no provider prop. Hardcoded for single provider despite 'OmniDrive' branding implying multi-cloud.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/FileCard.jsx",
+    "line": 127,
+    "pattern": "Premature Optimization - Lazy Loading",
+    "description": "loading='lazy' on thumbnail images (line 123) but thumbnails are small (120px container). Lazy loading overhead exceeds benefit for small thumbnails. Premature optimization.",
+    "severity": "low"
+  },
+  {
+    "file": "src/context/AuthContext.jsx",
+    "line": 8,
+    "pattern": "Over-engineered State Management",
+    "description": "AuthContext uses Context API + 4 useState + 2 useCallback for simple auth state (user, isGoogleConnected, loading states). No async auth flow, no token refresh, no multi-tab sync. Simple useState in App.jsx would suffice for MVP.",
+    "severity": "high"
+  },
+  {
+    "file": "src/context/AuthContext.jsx",
+    "line": 25,
+    "pattern": "Premature Generalization - Connection Checking",
+    "description": "checkGoogleConnection uses authApi.listAccounts() but parses multiple response shapes (array, object with accounts array, null checks). Handles multiple API response shapes that don't exist yet. Premature defensive coding.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/context/AuthContext.jsx",
+    "line": 48,
+    "pattern": "Speculative Feature - Simulated Auth",
+    "description": "login() generates fake user with random ID and fake email (user-${Date.now()}@omnidrive.local). No real auth, no JWT, no backend session. Simulated auth for MVP but Context API infrastructure built as if real auth exists.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/SignUpPage.jsx",
+    "line": 33,
+    "pattern": "Excessive State - SignUp Page",
+    "description": "7 useState hooks for connection state (googleConnected, microsoftConnected, connecting, accounts, error, plus OAuth state). Microsoft connection is simulated (setTimeout) with no backend. OneDrive integration doesn't exist in backend.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/SignUpPage.jsx",
+    "line": 95,
+    "pattern": "Speculative Feature - OneDrive",
+    "description": "handleOneDriveConnect simulates connection with setTimeout (line 99). No OneDrive API integration exists in backend (authApi only has Google OAuth). Complete speculative feature with full UI.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/SignUpPage.jsx",
+    "line": 55,
+    "pattern": "Premature Generalization - OAuth Flow",
+    "description": "OAuth callback handling with URL search params (error/success), sessionStorage for state validation, redirect logic. Full OAuth implementation for Google only. OneDrive flow simulated. Over-engineered for single provider.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/SignUpPage.jsx",
+    "line": 238,
+    "pattern": "Speculative Component - ProviderBadges",
+    "description": "ProviderBadges component renders Google Drive and OneDrive badges. OneDrive not implemented. Component duplication: ProviderBadges also exists in LoginPage.jsx (lines 6-20) - duplicate component in two files.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/api/client.js",
+    "line": 68,
+    "pattern": "Premature Generalization - Storage API",
+    "description": "storageApi has 7 methods (listStorageAccounts, getStorageInfo, syncStorage, getTotalStorage, listFiles, getFileMetadata) but frontend only uses listStorageAccounts and listFiles. syncStorage, getTotalStorage, getFileMetadata, getStorageInfo unused.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/api/client.js",
+    "line": 34,
+    "pattern": "Premature Generalization - Auth API",
+    "description": "authApi has startGoogleOAuth, handleOAuthCallback, listAccounts, deleteAccount. Only startGoogleOAuth and listAccounts used. handleOAuthCallback and deleteAccount unused. OAuth callback handled in SignUpPage via URL params instead.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/api/client.js",
+    "line": 5,
+    "pattern": "Premature Configuration",
+    "description": "API_BASE uses import.meta.env.VITE_API_BASE with fallback. No .env file exists in project. Single backend URL (localhost:8000). Environment variable abstraction for single environment.",
+    "severity": "low"
+  },
+  {
+    "file": "src/App.jsx",
+    "line": 8,
+    "pattern": "Unnecessary Abstraction - ProtectedRoute",
+    "description": "ProtectedRoute component wraps children with useAuth check. Only used once in App.jsx (line 21). Could be inline. Adds component abstraction for single use case.",
+    "severity": "low"
+  },
+  {
+    "file": "src/App.jsx",
+    "line": 15,
+    "pattern": "Premature Routing Setup",
+    "description": "BrowserRouter with 4 routes (/login, /signup, /home, /*). Only /login and /home are real routes. /signup is OAuth flow entry. /* redirects to /. React Router v6 for 2 real routes. Could use simple conditional rendering.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 330,
+    "pattern": "Excessive CSS - ConnectedHomePage.css",
+    "description": "760 lines of CSS for single component. Includes: responsive breakpoints (1024, 768, 480), dark mode refinements, high contrast mode, reduced motion, grid/list view variants, dropdown animations, breadcrumb styling, loading/empty/error states. 760 lines for one page MVP.",
+    "severity": "high"
+  },
+  {
+    "file": "src/components/FileCard.jsx",
+    "line": 653,
+    "pattern": "Excessive CSS - FileCard",
+    "description": "FileCard CSS (in ConnectedHomePage.css) includes: grid/list variants, responsive variants, dark mode backdrop-filter, high contrast borders, reduced motion, hover/touch states, thumbnail loading. 200+ lines for one card component.",
+    "severity": "high"
+  },
+  {
+    "file": "src/styles/SignUpPage.css",
+    "line": 1,
+    "pattern": "Excessive CSS - SignUp Page",
+    "description": "SignUpPage.css likely 400+ lines (not read but inferred from component complexity). Includes: animated background, provider cards, button variants, spinner states, responsive grid, badge animations. Over-styled for signup page.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/context/AuthContext.jsx",
+    "line": 64,
+    "pattern": "Context Over-Provider Pattern",
+    "description": "AuthProvider exposes 7 values (user, isLoading, isGoogleConnected, isCheckingConnection, checkGoogleConnection, login, logout). Consumer components destructure only what they need. Context re-renders all consumers on any state change. No memoization.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 109,
+    "pattern": "Unnecessary useCallback Dependency",
+    "description": "fetchFiles useCallback depends on isGoogleConnected and currentFolderId. But isGoogleConnected comes from AuthContext which triggers re-render anyway. useCallback prevents function recreation but component re-renders anyway from context change. Negligible benefit.",
+    "severity": "low"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 170,
+    "pattern": "Derived State Computed in Render",
+    "description": "itemCount, folderCount, fileCount, breadcrumb computed on every render (lines 167-173). Could use useMemo but values are cheap to compute. Not over-engineering per se but inconsistent with heavy useCallback use elsewhere.",
+    "severity": "low"
+  },
+  {
+    "file": "src/styles/ConnectedHomePage.css",
+    "line": 740,
+    "pattern": "Speculative CSS - Media Features",
+    "description": "CSS includes @media (prefers-color-scheme: dark), @media (prefers-contrast: high), @media (prefers-reduced-motion: reduce). App forces dark mode via --bg: #0a0a0a. These media queries will never match. Dead CSS.",
+    "severity": "medium"
+  },
+  {
+    "file": "src/components/ConnectedHomePage.jsx",
+    "line": 350,
+    "pattern": "Speculative Feature - Upload Button",
+    "description": "Upload button rendered (line 322-325) with Upload icon but no onClick handler. Placeholder for future upload feature. No backend upload API exists.",
+    "severity": "high"
+  }
+]
