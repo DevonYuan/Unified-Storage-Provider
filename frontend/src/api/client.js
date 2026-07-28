@@ -91,6 +91,30 @@ export const storageApi = {
   async getFileMetadata(accountId, fileId) {
     return request(`/storage/${accountId}/files/${fileId}`);
   },
+
+  async uploadFile(accountId, file, parentId = 'root') {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `/storage/${accountId}/files/upload?parent_id=${parentId}`;
+
+    // For file uploads, we need to not set Content-Type header
+    // so the browser can set it to multipart/form-data with boundary
+    const urlFull = `${API_BASE}${url}`;
+
+    const response = await fetch(urlFull, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
 };
 
 export default {

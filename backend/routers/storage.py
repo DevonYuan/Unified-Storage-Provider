@@ -1,6 +1,7 @@
 """Storage router for OmniDrive - manages storage account operations."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import File, UploadFile
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -8,7 +9,7 @@ from datetime import datetime
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
-from services.google_drive import list_drive_files, GoogleDriveError
+from services.google_drive import list_drive_files, GoogleDriveError, upload_drive_file
 
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
@@ -217,3 +218,52 @@ async def list_files(account_id: int, parent_id: str = "root", page_size: int = 
         items=items,
         total_items=len(items),
     )
+
+
+@router.post("/{account_id}/files/upload")
+async def upload_file(
+    account_id: int,
+    file: UploadFile = File(...),
+    parent_id: str = "root",
+    db: Session = Depends(get_db)
+):
+    """Upload a file to a connected storage account."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if account.provider != ProviderType.GOOGLE_DRIVE:
+        raise HTTPException(status_code=400, detail=f"File upload not supported for {account.provider.value}")
+
+    try:
+        # Upload file to Google Drive
+        uploaded_file = await upload_drive_file(account, db, file, parent_id)
+
+        # Return file metadata in the same format as list_files
+        mime_type = uploaded_file.get("mimeType", "")
+        category = get_mime_type_category(mime_type)
+        is_folder = category == "folder"
+        size = uploaded_file.get("size")
+        modified_time = uploaded_file.get("modifiedTime")
+
+        file_item = FileItem(
+            id=uploaded_file.get("id", ""),
+            name=uploaded_file.get("name", ""),
+            mime_type=mime_type,
+            category=category,
+            size=size if size else None,
+            size_formatted=format_file_size(int(size)) if size else None,
+            modified_time=modified_time,
+            modified_time_formatted=format_modified_time(modified_time) if modified_time else None,
+            thumbnail_link=uploaded_file.get("thumbnailLink"),
+            web_view_link=uploaded_file.get("webViewLink"),
+            is_folder=is_folder,
+            item_count=None
+        )
+
+        return file_item
+
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")

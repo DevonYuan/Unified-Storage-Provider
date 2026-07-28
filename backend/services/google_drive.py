@@ -1,7 +1,9 @@
 """Google Drive service for OmniDrive - handles Google Drive API operations."""
 
 import httpx
+import json
 from typing import Optional, List, Dict, Any
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 
@@ -43,43 +45,57 @@ async def list_drive_files(
     """
     access_token = await get_valid_access_token(account, db)
 
-    params = {
-        "q": f"'{parent_id}' in parents and trashed = false",
-        "pageSize": page_size,
-        "fields": "files(id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,parents)",
-        "orderBy": "modifiedTime desc",
-    }
+    all_files = []
+    page_token = None
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(
-            "https://www.googleapis.com/drive/v3/files",
-            headers={"Authorization": f"Bearer {access_token}"},
-            params=params,
-        )
+        while True:
+            params = {
+                "q": f"'{parent_id}' in parents and trashed = false",
+                "pageSize": page_size,
+                "fields": "files(id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,parents),nextPageToken",
+                "orderBy": "modifiedTime desc",
+            }
 
-        if response.status_code == 401:
-            if account.refresh_token:
-                try:
-                    token_response = await refresh_access_token(account.refresh_token)
-                    account.access_token = token_response["access_token"]
-                    db.commit()
+            if page_token:
+                params["pageToken"] = page_token
 
-                    response = await client.get(
-                        "https://www.googleapis.com/drive/v3/files",
-                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
-                        params=params,
-                    )
-                except Exception:
-                    raise GoogleDriveError("Failed to refresh access token")
-            else:
-                raise GoogleDriveError("Access token expired and no refresh token available")
+            response = await client.get(
+                "https://www.googleapis.com/drive/v3/files",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params=params,
+            )
 
-        if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            if response.status_code == 401:
+                if account.refresh_token:
+                    try:
+                        token_response = await refresh_access_token(account.refresh_token)
+                        account.access_token = token_response["access_token"]
+                        db.commit()
 
-        data = response.json()
-        return data.get("files", [])
+                        response = await client.get(
+                            "https://www.googleapis.com/drive/v3/files",
+                            headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                            params=params,
+                        )
+                    except Exception:
+                        raise GoogleDriveError("Failed to refresh access token")
+                else:
+                    raise GoogleDriveError("Access token expired and no refresh token available")
+
+            if response.status_code != 200:
+                error_data = response.json()
+                raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+            data = response.json()
+            files = data.get("files", [])
+            all_files.extend(files)
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+    return all_files
 
 
 async def get_file_metadata(
@@ -100,6 +116,85 @@ async def get_file_metadata(
                 "fields": "id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,parents"
             },
         )
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        return response.json()
+
+
+async def upload_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file: UploadFile,
+    parent_id: str = "root"
+) -> Dict[str, Any]:
+    """
+    Upload a file to Google Drive.
+
+    Args:
+        account: ConnectedAccount with Google Drive credentials
+        db: Database session
+        file: UploadFile object containing file data
+        parent_id: Parent folder ID to upload to (default: "root")
+
+    Returns:
+        Dictionary containing file metadata
+    """
+    access_token = await get_valid_access_token(account, db)
+
+    # Read file content
+    content = await file.read()
+
+    # Prepare file metadata
+    file_metadata = {
+        "name": file.filename,
+        "parents": [parent_id] if parent_id != "root" else []
+    }
+
+    # Remove empty parents array if root
+    if parent_id == "root":
+        del file_metadata["parents"]
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Prepare multipart form data
+        files = {
+            'data': ('metadata', json.dumps(file_metadata), 'application/json'),
+            'file': (file.filename, content, file.content_type or 'application/octet-stream')
+        }
+
+        response = await client.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers={"Authorization": f"Bearer {access_token}"},
+            files=files
+        )
+
+        # Reset file pointer for potential reuse
+        await file.seek(0)
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+
+                    # Retry with new token
+                    files = {
+                        'data': ('metadata', json.dumps(file_metadata), 'application/json'),
+                        'file': (file.filename, content, file.content_type or 'application/octet-stream')
+                    }
+
+                    response = await client.post(
+                        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        files=files
+                    )
+                except Exception:
+                    raise GoogleDriveError("Failed to refresh access token")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
             error_data = response.json()
@@ -168,3 +263,86 @@ def get_mime_type_category(mime_type: str) -> str:
         return "code"
     else:
         return "other"
+
+
+async def upload_file_to_drive(
+    account: "ConnectedAccount",
+    db: Session,
+    file_data: bytes,
+    filename: str,
+    mime_type: str,
+    parent_id: str = "root"
+) -> Dict[str, Any]:
+    """
+    Upload a file to Google Drive.
+
+    Args:
+        account: ConnectedAccount with Google Drive credentials
+        db: Database session
+        file_data: File content as bytes
+        filename: Name of the file to upload
+        mime_type: MIME type of the file
+        parent_id: Parent folder ID to upload to (default: "root")
+
+    Returns:
+        Dictionary containing file metadata
+    """
+    access_token = await get_valid_access_token(account, db)
+
+    # Prepare file metadata
+    file_metadata = {
+        "name": filename,
+        "parents": [parent_id]
+    }
+
+    # Prepare media content
+    from io import BytesIO
+    media_content = BytesIO(file_data)
+
+    # Upload file
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Prepare multipart form data
+        files = {
+            'data': ('metadata', json.dumps(file_metadata), 'application/json'),
+            'file': (filename, media_content, mime_type)
+        }
+
+        response = await client.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers={"Authorization": f"Bearer {access_token}"},
+            files=files
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+
+                    # Retry with new token
+                    files = {
+                        'data': ('metadata', json.dumps(file_metadata), 'application/json'),
+                        'file': (filename, media_content, mime_type)
+                    }
+
+                    response = await client.post(
+                        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        files=files
+                    )
+                except Exception:
+                    raise GoogleDriveError("Failed to refresh access token")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        # Get the uploaded file metadata
+        file_id = response.json().get("id")
+        if file_id:
+            return await get_file_metadata(account, db, file_id)
+        else:
+            raise GoogleDriveError("Failed to retrieve uploaded file metadata")

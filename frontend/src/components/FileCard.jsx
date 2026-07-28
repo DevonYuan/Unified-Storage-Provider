@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Folder,
   Image,
@@ -9,21 +10,23 @@ import {
   Archive,
   Code,
   File,
+  Star,
 } from 'lucide-react'
+import '../styles/FileCard.css'
 
 function getCategoryIcon(category) {
   const icons = {
-    folder: <Folder className="file-card__category-icon" size={48} />,
-    image: <Image className="file-card__category-icon" size={48} />,
-    video: <Video className="file-card__category-icon" size={48} />,
-    audio: <Music className="file-card__category-icon" size={48} />,
-    pdf: <FileText className="file-card__category-icon" size={48} />,
-    document: <FileText className="file-card__category-icon" size={48} />,
-    spreadsheet: <Table className="file-card__category-icon" size={48} />,
-    presentation: <Presentation className="file-card__category-icon" size={48} />,
-    archive: <Archive className="file-card__category-icon" size={48} />,
-    code: <Code className="file-card__category-icon" size={48} />,
-    other: <File className="file-card__category-icon" size={48} />,
+    folder: Folder,
+    image: Image,
+    video: Video,
+    audio: Music,
+    pdf: FileText,
+    document: FileText,
+    spreadsheet: Table,
+    presentation: Presentation,
+    archive: Archive,
+    code: Code,
+    other: File,
   }
   return icons[category] || icons.other
 }
@@ -35,6 +38,7 @@ export function FileCard({
 }) {
   const category = file.category
   const isFolder = file.is_folder
+  const [isFavorite, setIsFavorite] = useState(false)
   const CategoryIcon = getCategoryIcon(category)
 
   const handleClick = (e) => {
@@ -43,6 +47,11 @@ export function FileCard({
     if (!isFolder && onOpen) {
       onOpen(file.id)
     }
+  }
+
+  const toggleFavorite = (e) => {
+    e.stopPropagation()
+    setIsFavorite(!isFavorite)
   }
 
   const iconSize = viewMode === 'list' ? 24 : 64
@@ -56,12 +65,21 @@ export function FileCard({
       {/* Origin indicator - top left */}
       <div className="file-card__origin" title="Google Drive" />
 
+      {/* Favorite star - top right */}
+      <button
+        className={`file-card__favorite ${isFavorite ? 'file-card__favorite--active' : ''}`}
+        onClick={toggleFavorite}
+        aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Star className="file-card__favorite-icon" size={16} />
+      </button>
+
       {/* Card content */}
       <div className={contentClass}>
         {isFolder ? (
           // Folder: icon centered
           <div className="file-card__icon-wrapper">
-            <CategoryIcon size={iconSize} />
+            <CategoryIcon className="file-card__category-icon" size={iconSize} />
           </div>
         ) : file.category === 'image' && file.thumbnail_link ? (
           // Image: thumbnail top half
@@ -75,7 +93,7 @@ export function FileCard({
         ) : (
           // Other files: icon centered
           <div className="file-card__icon-wrapper">
-            <CategoryIcon size={iconSize} />
+            <CategoryIcon className="file-card__category-icon" size={iconSize} />
           </div>
         )}
 

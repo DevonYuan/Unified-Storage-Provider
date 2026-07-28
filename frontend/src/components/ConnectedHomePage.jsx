@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Loader2,
   Folder,
+  Upload,
 } from 'lucide-react'
 import { FileCard } from './FileCard.jsx'
 import '../styles/ConnectedHomePage.css'
@@ -23,6 +24,10 @@ export function ConnectedHomePage() {
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('recent')
   const [filterBy, setFilterBy] = useState('all')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [showSortMenu, setShowSortMenu] = useState(false)
 
   // Filter and sort options - simplified to only what API supports
   const filterOptions = [
@@ -84,6 +89,43 @@ export function ConnectedHomePage() {
       setError('Failed to load files from Google Drive')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const uploadFile = async (e) => {
+    const fileInput = document.getElementById('file-upload')
+    if (!fileInput.files || fileInput.files.length === 0) {
+      return
+    }
+
+    const file = fileInput.files[0]
+    setUploading(true)
+    setUploadError(null)
+
+    try {
+      // Get the first Google Drive account
+      const accountsResponse = await storageApi.listStorageAccounts()
+      const accounts = accountsResponse.storage_accounts || []
+      const googleAccount = accounts.find(acc => acc.provider === 'google_drive')
+
+      if (!googleAccount) {
+        setUploadError('No Google Drive account connected')
+        return
+      }
+
+      // Upload file to backend API (root folder only for MVP)
+      const uploadedFile = await storageApi.uploadFile(googleAccount.account_id, file, 'root')
+
+      // Add the uploaded file to the beginning of the list
+      setFiles(prev => [uploadedFile, ...prev])
+
+      // Reset file input
+      fileInput.value = ''
+    } catch (err) {
+      console.error('Failed to upload file:', err)
+      setUploadError('Failed to upload file')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -162,7 +204,7 @@ export function ConnectedHomePage() {
           <div className="connected-home-page__title-section">
             <h1 className="connected-home-page__title">All files</h1>
             <p className="connected-home-page__subtitle">
-              {itemCount} item{itemCount !== 1 ? 's' : ''} · {folderCount} folder{folderCount !== 1 ? 's' : ''} · {fileCount} file{fileCount !== 1 ? 's' : ''}
+              {itemCount} item{itemCount !== 1 ? 's' : ''} · sorted by {sortBy === 'recent' ? 'recent' : sortBy === 'name' ? 'name' : 'size'}
             </p>
           </div>
 
@@ -248,6 +290,23 @@ export function ConnectedHomePage() {
               >
                 <List className="connected-home-page__view-icon" size={16} />
               </button>
+            </div>
+
+            {/* Upload button */}
+            <div className="connected-home-page__upload">
+              <label
+                htmlFor="file-upload"
+                className={`connected-home-page__upload-btn ${uploading ? 'connected-home-page__upload-btn--uploading' : ''}`}
+              >
+                <Upload className="connected-home-page__upload-icon" size={16} />
+                {uploading ? 'Uploading...' : 'Upload'}
+              </label>
+              <input
+                type="file"
+                id="file-upload"
+                style={{ display: 'none' }}
+                onChange={uploadFile}
+              />
             </div>
           </div>
         </div>
