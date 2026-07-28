@@ -7,35 +7,17 @@ import { ConnectedHomePage } from './components/ConnectedHomePage.jsx'
 import { useEffect } from 'react'
 
 function ProtectedRoute({ children }) {
-  const { user, isLoading } = useAuth()
-
-  if (isLoading) {
-    return (
-      <div className="login-page login-page__loading">
-        <span className="login-page__loading-text">Loading...</span>
-      </div>
-    )
-  }
-
+  const { user } = useAuth()
   return user ? children : <Navigate to="/login" replace />
 }
 
 function PublicRoute({ children }) {
-  const { user, isLoading } = useAuth()
-
-  if (isLoading) {
-    return (
-      <div className="login-page login-page__loading">
-        <span className="login-page__loading-text">Loading...</span>
-      </div>
-    )
-  }
-
-  return user ? <Navigate to="/" replace /> : children
+  const { user } = useAuth()
+  return user ? <Navigate to="/home" replace /> : children
 }
 
 function HomeRoute() {
-  const { user, isLoading, isGoogleConnected, isCheckingConnection, checkGoogleConnection } = useAuth()
+  const { user, isGoogleConnected, isCheckingConnection, checkGoogleConnection } = useAuth()
 
   useEffect(() => {
     if (user) {
@@ -44,9 +26,9 @@ function HomeRoute() {
     }
   }, [user, checkGoogleConnection])
 
-  console.log('HomeRoute state:', { user, isLoading, isGoogleConnected, isCheckingConnection })
+  console.log('HomeRoute state:', { user, isGoogleConnected, isCheckingConnection })
 
-  if (isLoading || isCheckingConnection) {
+  if (isCheckingConnection) {
     return (
       <div className="login-page login-page__loading">
         <span className="login-page__loading-text">Loading...</span>
@@ -63,9 +45,10 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/signup" element={<PublicRoute><SignUpPage /></PublicRoute>} />
-          <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/home" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

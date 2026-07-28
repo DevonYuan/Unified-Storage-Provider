@@ -51,7 +51,10 @@ export function ConnectedHomePage() {
   ]
 
   const fetchFiles = useCallback(async () => {
-    if (!isGoogleConnected) return
+    if (!isGoogleConnected) {
+      setLoading(false)
+      return
+    }
 
     setLoading(true)
     setError(null)

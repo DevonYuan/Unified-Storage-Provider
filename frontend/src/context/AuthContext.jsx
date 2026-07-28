@@ -9,6 +9,19 @@ export function AuthProvider({ children }) {
   const [isGoogleConnected, setIsGoogleConnected] = useState(false)
   const [isCheckingConnection, setIsCheckingConnection] = useState(false)
 
+  // Restore user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('omnidrive_user')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse stored user:', error)
+        localStorage.removeItem('omnidrive_user')
+      }
+    }
+  }, [])
+
   const checkGoogleConnection = useCallback(async () => {
     setIsCheckingConnection(true)
     try {

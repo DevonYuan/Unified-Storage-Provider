@@ -25,7 +25,7 @@ export function LoginPage() {
 
   const handleLogin = () => {
     login()
-    navigate('/')
+    navigate('/home')
   }
 
   return (
