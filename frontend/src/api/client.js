@@ -83,6 +83,14 @@ export const storageApi = {
   async getTotalStorage() {
     return request('/storage/accounts/total');
   },
+
+  async listFiles(accountId, parentId = 'root') {
+    return request(`/storage/${accountId}/files?parent_id=${parentId}`);
+  },
+
+  async getFileMetadata(accountId, fileId) {
+    return request(`/storage/${accountId}/files/${fileId}`);
+  },
 };
 
 export default {

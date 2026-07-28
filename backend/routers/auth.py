@@ -125,6 +125,8 @@ def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
         if existing_account:
             account = existing_account
             account.display_name = user_info.email
+            account.access_token = token_response.access_token
+            account.refresh_token = token_response.refresh_token
             account.token_expiry = token_expiry
             account.updated_at = datetime.utcnow()
         else:
@@ -132,6 +134,8 @@ def google_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
                 provider=ProviderType.GOOGLE_DRIVE,
                 display_name=user_info.email,
                 keyring_key=keyring_key,
+                access_token=token_response.access_token,
+                refresh_token=token_response.refresh_token,
                 token_expiry=token_expiry,
             )
             db.add(account)
@@ -206,6 +210,8 @@ def oauth_callback(request: OAuthCallbackRequest, db: Session = Depends(get_db))
         if existing_account:
             account = existing_account
             account.display_name = user_info.email
+            account.access_token = token_response.access_token
+            account.refresh_token = token_response.refresh_token
             account.token_expiry = token_expiry
             account.updated_at = datetime.utcnow()
         else:
@@ -213,6 +219,8 @@ def oauth_callback(request: OAuthCallbackRequest, db: Session = Depends(get_db))
                 provider=ProviderType.GOOGLE_DRIVE,
                 display_name=user_info.email,
                 keyring_key=keyring_key,
+                access_token=token_response.access_token,
+                refresh_token=token_response.refresh_token,
                 token_expiry=token_expiry,
             )
             db.add(account)

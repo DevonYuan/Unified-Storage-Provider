@@ -3,11 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
+from services.google_drive import list_drive_files, get_mime_type_category, format_file_size, format_modified_time, GoogleDriveError
+
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
 
@@ -25,6 +27,31 @@ class StorageInfo(BaseModel):
 
 class StorageListResponse(BaseModel):
     storage_accounts: list[StorageInfo]
+
+
+class FileItem(BaseModel):
+    """File/folder item from storage provider."""
+    id: str
+    name: str
+    mime_type: str
+    category: str
+    size: Optional[int] = None
+    size_formatted: Optional[str] = None
+    modified_time: Optional[str] = None
+    modified_time_formatted: Optional[str] = None
+    thumbnail_link: Optional[str] = None
+    web_view_link: Optional[str] = None
+    is_folder: bool = False
+    item_count: Optional[int] = None  # For folders
+
+
+class FileListResponse(BaseModel):
+    """Response for file listing."""
+    account_id: int
+    provider: ProviderType
+    parent_id: str
+    items: List[FileItem]
+    total_items: int
 
 
 @router.get("", response_model=StorageListResponse)
@@ -47,42 +74,45 @@ def list_storage_accounts(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/{account_id}", response_model=StorageInfo)
-def get_storage_info(account_id: int, db: Session = Depends(get_db)):
-    """Get storage information for a specific account."""
+@router.get("/{account_id}/files", response_model=FileListResponse)
+async def list_files(account_id: int, parent_id: str = "root", page_size: int = 100, db: Session = Depends(get_db)):
+    """List files and folders from a connected storage account."""
     account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    return StorageInfo(
+    if account.provider != ProviderType.GOOGLE_DRIVE:
+        raise HTTPException(status_code=400, detail=f"File listing not supported for {account.provider.value}")
+
+    try:
+        files = await list_drive_files(account, db, parent_id=parent_id, page_size=page_size)
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
+
+    items = []
+    for f in files:
+        category = get_mime_type_category(f.get("mimeType", ""))
+        is_folder = category == "folder"
+        items.append(FileItem(
+            id=f.get("id", ""),
+            name=f.get("name", ""),
+            mime_type=f.get("mimeType", ""),
+            category=category,
+            size=f.get("size") if f.get("size") else None,
+            size_formatted=format_file_size(f.get("size")) if f.get("size") else None,
+            modified_time=f.get("modifiedTime"),
+            modified_time_formatted=format_modified_time(f.get("modifiedTime", "")),
+            thumbnail_link=f.get("thumbnailLink"),
+            web_view_link=f.get("webViewLink"),
+            is_folder=is_folder,
+        ))
+
+    return FileListResponse(
         account_id=account.id,
         provider=account.provider,
-        display_name=account.display_name,
-        total_space=None,
-        used_space=None,
-        available_space=None,
-        last_synced=None,
+        parent_id=parent_id,
+        items=items,
+        total_items=len(items),
     )
-
-
-@router.post("/{account_id}/sync", status_code=status.HTTP_202_ACCEPTED)
-def sync_storage(account_id: int, db: Session = Depends(get_db)):
-    """Trigger a sync for a storage account (placeholder for future implementation)."""
-    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
-    if not account:
-        raise HTTPException(status_code=404, detail="Account not found")
-
-    return {"message": f"Sync triggered for {account.display_name}", "status": "pending"}
-
-
-@router.get("/accounts/total")
-def get_total_storage(db: Session = Depends(get_db)):
-    """Get combined storage across all providers (placeholder)."""
-    accounts = db.query(ConnectedAccount).all()
-    return {
-        "total_space": None,
-        "used_space": None,
-        "available_space": None,
-        "account_count": len(accounts),
-        "message": "Total storage calculation will be implemented when provider APIs are integrated",
-    }
