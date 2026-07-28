@@ -9,6 +9,8 @@ import {
   Grid,
   List,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   Folder,
   Upload,
@@ -29,6 +31,11 @@ export function ConnectedHomePage() {
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
 
+  // Folder navigation state
+  const [currentFolderId, setCurrentFolderId] = useState('root')
+  const [currentFolderName, setCurrentFolderName] = useState('All files')
+  const [folderStack, setFolderStack] = useState([])
+
   // Filter and sort options - simplified to only what API supports
   const filterOptions = [
     { value: 'all', label: 'All files' },
@@ -44,11 +51,13 @@ export function ConnectedHomePage() {
     { value: 'size', label: 'Size' },
   ]
 
-  const fetchFiles = async () => {
+  const fetchFiles = async (folderId = null) => {
     if (!isGoogleConnected) {
       setLoading(false)
       return
     }
+
+    const targetId = folderId ?? currentFolderId
 
     setLoading(true)
     setError(null)
@@ -65,8 +74,8 @@ export function ConnectedHomePage() {
         return
       }
 
-      // Fetch files from backend API (root folder only for MVP)
-      const response = await storageApi.listFiles(googleAccount.account_id, 'root')
+      // Fetch files from backend API for the current folder
+      const response = await storageApi.listFiles(googleAccount.account_id, targetId)
       const fileItems = response.items || []
 
       // Transform API response to match FileCard expectations
@@ -113,8 +122,8 @@ export function ConnectedHomePage() {
         return
       }
 
-      // Upload file to backend API (root folder only for MVP)
-      const uploadedFile = await storageApi.uploadFile(googleAccount.account_id, file, 'root')
+      // Upload file to backend API for the current folder
+      const uploadedFile = await storageApi.uploadFile(googleAccount.account_id, file, currentFolderId)
 
       // Add the uploaded file to the beginning of the list
       setFiles(prev => [uploadedFile, ...prev])
@@ -129,9 +138,52 @@ export function ConnectedHomePage() {
     }
   }
 
+  // Folder navigation handlers
+  const navigateToFolder = (folderId, folderName) => {
+    setFolderStack(prev => [...prev, { id: folderId, name: folderName }])
+    setCurrentFolderId(folderId)
+    setCurrentFolderName(folderName)
+  }
+
+  const goBack = () => {
+    const newStack = folderStack.slice(0, -1)
+    const parent = newStack[newStack.length - 1]
+    if (parent) {
+      setCurrentFolderId(parent.id)
+      setCurrentFolderName(parent.name)
+    } else {
+      setCurrentFolderId('root')
+      setCurrentFolderName('All files')
+    }
+    setFolderStack(newStack)
+  }
+
+  const navigateToRoot = () => {
+    setCurrentFolderId('root')
+    setCurrentFolderName('All files')
+    setFolderStack([])
+  }
+
+  const navigateToBreadcrumb = (index) => {
+    const target = folderStack[index]
+    if (target) {
+      setCurrentFolderId(target.id)
+      setCurrentFolderName(target.name)
+      setFolderStack(folderStack.slice(0, index + 1))
+    }
+  }
+
+  const handleOpenFile = (file) => {
+    if (file.is_folder) {
+      navigateToFolder(file.id, file.name)
+    } else if (file.web_view_link) {
+      window.open(file.web_view_link, '_blank')
+    }
+  }
+
   useEffect(() => {
-    fetchFiles()
-  }, [isGoogleConnected])
+    fetchFiles(currentFolderId)
+  }, [isGoogleConnected, currentFolderId])
 
   useEffect(() => {
     checkGoogleConnection()
@@ -202,7 +254,19 @@ export function ConnectedHomePage() {
         <div className="connected-home-page__toolbar">
           {/* Title and item count */}
           <div className="connected-home-page__title-section">
-            <h1 className="connected-home-page__title">All files</h1>
+            <div className="connected-home-page__title-row">
+              {folderStack.length > 0 && (
+                <button
+                  onClick={goBack}
+                  className="connected-home-page__back-btn"
+                  aria-label="Go back to parent folder"
+                  title={`Back to ${folderStack.length > 1 ? folderStack[folderStack.length - 2].name : 'All files'}`}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <h1 className="connected-home-page__title">{currentFolderName}</h1>
+            </div>
             <p className="connected-home-page__subtitle">
               {itemCount} item{itemCount !== 1 ? 's' : ''} · sorted by {sortBy === 'recent' ? 'recent' : sortBy === 'name' ? 'name' : 'size'}
             </p>
@@ -313,6 +377,28 @@ export function ConnectedHomePage() {
 
         {/* File Grid */}
         <div className="connected-home-page__content">
+          {/* Breadcrumb trail */}
+          {folderStack.length > 0 && (
+            <div className="connected-home-page__breadcrumb">
+              <button
+                onClick={() => navigateToRoot()}
+                className="connected-home-page__breadcrumb-item"
+              >
+                All files
+              </button>
+              {folderStack.map((folder, i) => (
+                <span key={folder.id} className="connected-home-page__breadcrumb-segment">
+                  <ChevronRight size={12} className="connected-home-page__breadcrumb-sep" />
+                  <button
+                    onClick={() => navigateToBreadcrumb(i)}
+                    className={`connected-home-page__breadcrumb-item ${i === folderStack.length - 1 ? 'connected-home-page__breadcrumb-item--active' : ''}`}
+                  >
+                    {folder.name}
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           {loading ? (
             <div className="connected-home-page__loading">
               <Loader2 className="connected-home-page__loader" size={24} />
@@ -341,7 +427,7 @@ export function ConnectedHomePage() {
                   key={file.id}
                   file={file}
                   viewMode={viewMode}
-                  onOpen={(fileId) => handleOpenFile(fileId, sortedFiles)}
+                  onOpen={handleOpenFile}
                 />
               ))}
             </div>
@@ -350,12 +436,4 @@ export function ConnectedHomePage() {
       </main>
     </div>
   )
-}
-
-// Handle opening file/folder - moved inside component
-function handleOpenFile(fileId, files) {
-  const file = files.find(f => f.id === fileId)
-  if (file?.web_view_link) {
-    window.open(file.web_view_link, '_blank')
-  }
 }

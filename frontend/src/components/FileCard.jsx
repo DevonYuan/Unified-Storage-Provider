@@ -44,8 +44,8 @@ export function FileCard({
   const handleClick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!isFolder && onOpen) {
-      onOpen(file.id)
+    if (onOpen) {
+      onOpen(file)
     }
   }
 
