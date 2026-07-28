@@ -17,7 +17,7 @@ import { FileCard } from './FileCard.jsx'
 import '../styles/ConnectedHomePage.css'
 
 export function ConnectedHomePage() {
-  const { user, isGoogleConnected, checkGoogleConnection } = useAuth()
+  const { user, isGoogleConnected, checkGoogleConnection, logout } = useAuth()
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -187,7 +187,7 @@ export function ConnectedHomePage() {
             <Loader2 className={`connected-home-page__refresh-icon ${loading ? 'connected-home-page__refresh-icon--spinning' : ''}`} size={16} />
           </button>
           <button
-            onClick={() => { /* logout handled by auth context */ }}
+            onClick={logout}
             className="connected-home-page__signout"
           >
             <LogOut className="connected-home-page__signout-icon" size={16} />

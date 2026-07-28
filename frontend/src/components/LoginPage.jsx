@@ -48,8 +48,8 @@ export function LoginPage() {
         </div>
 
         <h1 className="login-page__headline">
-          <span className="login-page__headline-line">Your files.</span>
-          <span className="login-page__headline-line login-page__headline-line--muted">Not your folders.</span>
+          <span className="login-page__headline-line">Multiple Clouds</span>
+          <span className="login-page__headline-line login-page__headline-line--muted">In One Workspace</span>
         </h1>
 
         <p className="login-page__subheadline">
