@@ -5,53 +5,6 @@
   overflow: hidden;
 }
 
-/* Origin indicator - top left colored dot */
-.file-card__origin {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 8px;
-  height: 8px;
-  background-color: #4caf50; /* Green for Google Drive */
-  border-radius: 50%;
-  z-index: 2;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
-}
-
-/* Favorite star - top right */
-.file-card__favorite {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  z-index: 2;
-  color: var(--fg-muted);
-  transition: color 0.2s ease;
-}
-
-.file-card__favorite:hover {
-  color: var(--fg);
-}
-
-.file-card__favorite--active {
-  color: #ff6b6b; /* Red for active favorite */
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 /* Ensure content doesn't overflow */
 .file-card__content {
   overflow: hidden;

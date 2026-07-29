@@ -583,6 +583,10 @@
   position: absolute;
   top: 10px;
   left: 10px;
+  width: 8px;
+  height: 8px;
+  background-color: #4caf50;
+  border-radius: 50%;
   z-index: 2;
 }
 
