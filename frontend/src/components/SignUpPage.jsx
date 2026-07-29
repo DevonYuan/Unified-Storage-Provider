@@ -77,7 +77,7 @@ export function SignUpPage() {
 
     try {
       // Use backend's registered redirect URI (must match Google Cloud Console)
-      const redirectUri = 'http://127.0.0.1:8000/auth/google/callback'
+      const redirectUri = 'http://localhost:8000/auth/google/callback'
       const { auth_url, state } = await authApi.startGoogleOAuth(redirectUri)
 
       // Store state in sessionStorage for validation on callback

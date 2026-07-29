@@ -12,7 +12,7 @@ Before any code, register an app in the Azure Portal:
 1. Go to **Azure Portal** → **Microsoft Entra ID** (formerly Azure AD) → **App registrations** → **New registration**
 2. **Name**: `OmniDrive` (or similar)
 3. **Supported account types**: "Accounts in any organizational directory and personal Microsoft accounts"
-4. **Redirect URI**: Web → `http://127.0.0.1:8000/auth/microsoft/callback`
+4. **Redirect URI**: Web → `http://localhost:8000/auth/microsoft/callback`
 5. After creation, go to **Certificates & secrets** → **New client secret** — save the value immediately
 6. Note the **Application (client) ID** from the Overview page
 
@@ -26,7 +26,7 @@ Add these to your `.env` file:
 # Microsoft Graph / Azure AD OAuth
 MICROSOFT_CLIENT_ID=your-client-id-here
 MICROSOFT_CLIENT_SECRET=your-client-secret-here
-MICROSOFT_REDIRECT_URI=http://127.0.0.1:8000/auth/microsoft/callback
+MICROSOFT_REDIRECT_URI=http://localhost:8000/auth/microsoft/callback
 # Optional overrides (defaults below are standard):
 # MICROSOFT_AUTH_URI=https://login.microsoftonline.com/common/oauth2/v2.0/authorize
 # MICROSOFT_TOKEN_URI=https://login.microsoftonline.com/common/oauth2/v2.0/token
@@ -171,7 +171,7 @@ The `ConnectedAccount` model and SQLite schema already support `ProviderType.ONE
 const handleOneDriveConnect = async () => {
     setConnecting('microsoft')
     try {
-        const redirectUri = 'http://127.0.0.1:8000/auth/microsoft/callback'
+        const redirectUri = 'http://localhost:8000/auth/microsoft/callback'
         const { auth_url, state } = await authApi.startMicrosoftOAuth(redirectUri)
         sessionStorage.setItem('oauth_state_ms', state)
         window.location.href = auth_url
