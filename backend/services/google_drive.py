@@ -6,6 +6,8 @@ from typing import Optional, List, Dict, Any
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
+from services.google_oauth import refresh_access_token
+
 
 class GoogleDriveError(Exception):
     """Google Drive API related errors."""
@@ -78,8 +80,8 @@ async def list_drive_files(
                             headers={"Authorization": f"Bearer {token_response['access_token']}"},
                             params=params,
                         )
-                    except Exception:
-                        raise GoogleDriveError("Failed to refresh access token")
+                    except Exception as e:
+                        raise GoogleDriveError(f"Failed to refresh access token: {e}")
                 else:
                     raise GoogleDriveError("Access token expired and no refresh token available")
 
@@ -191,8 +193,8 @@ async def upload_drive_file(
                         headers={"Authorization": f"Bearer {token_response['access_token']}"},
                         files=files
                     )
-                except Exception:
-                    raise GoogleDriveError("Failed to refresh access token")
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
             else:
                 raise GoogleDriveError("Access token expired and no refresh token available")
 

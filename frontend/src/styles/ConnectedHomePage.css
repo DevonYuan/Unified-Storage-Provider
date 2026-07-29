@@ -437,6 +437,20 @@
   background-color: #1ea74d;
 }
 
+.connected-home-page__error-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.connected-home-page__error-hint {
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin: 0;
+  text-align: center;
+}
+
 /* Empty state */
 .connected-home-page__empty {
   display: flex;

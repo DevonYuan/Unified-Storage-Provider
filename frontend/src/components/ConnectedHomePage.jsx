@@ -408,7 +408,18 @@ export function ConnectedHomePage() {
             <div className="connected-home-page__error">
               <Folder className="connected-home-page__error-icon" size={48} />
               <p>{error}</p>
-              <button onClick={fetchFiles} className="connected-home-page__retry-btn">Retry</button>
+              {error.toLowerCase().includes('refresh') || error.toLowerCase().includes('token') ? (
+                <div className="connected-home-page__error-actions">
+                  <p className="connected-home-page__error-hint">
+                    Your Google session may have expired. Reconnect to restore access.
+                  </p>
+                  <button onClick={() => window.location.href = '/signup'} className="connected-home-page__retry-btn">
+                    Reconnect Google Drive
+                  </button>
+                </div>
+              ) : (
+                <button onClick={fetchFiles} className="connected-home-page__retry-btn">Retry</button>
+              )}
             </div>
           ) : sortedFiles.length === 0 ? (
             <div className="connected-home-page__empty">
