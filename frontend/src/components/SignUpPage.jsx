@@ -95,10 +95,18 @@ export function SignUpPage() {
   const handleOneDriveConnect = async () => {
     if (microsoftConnected) return
     setConnecting('microsoft')
-    // Simulate connection process
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setMicrosoftConnected(true)
-    setConnecting(null)
+
+    try {
+      const redirectUri = 'http://localhost:8000/auth/microsoft/callback'
+      const { auth_url, state } = await authApi.startMicrosoftOAuth(redirectUri)
+
+      sessionStorage.setItem('oauth_state_ms', state)
+      window.location.href = auth_url
+    } catch (err) {
+      console.error('Failed to start OneDrive OAuth:', err)
+      setConnecting(null)
+      alert(`Failed to start OneDrive connection: ${err.message}`)
+    }
   }
 
   const handleContinue = () => {

@@ -10,6 +10,11 @@ from datetime import datetime
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
 from services.google_drive import list_drive_files, GoogleDriveError, upload_drive_file
+from services.microsoft_graph import (
+    list_drive_files as list_ms_files,
+    MicrosoftGraphError,
+    upload_drive_file as upload_ms_file,
+)
 
 
 router = APIRouter(prefix="/storage", tags=["Storage"])
@@ -179,15 +184,18 @@ async def list_files(account_id: int, parent_id: str = "root", page_size: int = 
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    if account.provider != ProviderType.GOOGLE_DRIVE:
+    if account.provider == ProviderType.GOOGLE_DRIVE:
+        try:
+            files = await list_drive_files(account, db, parent_id=parent_id, page_size=page_size)
+        except GoogleDriveError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    elif account.provider == ProviderType.ONEDRIVE:
+        try:
+            files = await list_ms_files(account, db, parent_id=parent_id, page_size=page_size)
+        except MicrosoftGraphError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
         raise HTTPException(status_code=400, detail=f"File listing not supported for {account.provider.value}")
-
-    try:
-        files = await list_drive_files(account, db, parent_id=parent_id, page_size=page_size)
-    except GoogleDriveError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
 
     items = []
     for f in files:
@@ -232,38 +240,39 @@ async def upload_file(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    if account.provider != ProviderType.GOOGLE_DRIVE:
+    if account.provider == ProviderType.GOOGLE_DRIVE:
+        try:
+            uploaded_file = await upload_drive_file(account, db, file, parent_id)
+        except GoogleDriveError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    elif account.provider == ProviderType.ONEDRIVE:
+        try:
+            uploaded_file = await upload_ms_file(account, db, file, parent_id)
+        except MicrosoftGraphError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
         raise HTTPException(status_code=400, detail=f"File upload not supported for {account.provider.value}")
 
-    try:
-        # Upload file to Google Drive
-        uploaded_file = await upload_drive_file(account, db, file, parent_id)
+    # Return file metadata in the same format as list_files
+    mime_type = uploaded_file.get("mimeType", "")
+    category = get_mime_type_category(mime_type)
+    is_folder = category == "folder"
+    size = uploaded_file.get("size")
+    modified_time = uploaded_file.get("modifiedTime")
 
-        # Return file metadata in the same format as list_files
-        mime_type = uploaded_file.get("mimeType", "")
-        category = get_mime_type_category(mime_type)
-        is_folder = category == "folder"
-        size = uploaded_file.get("size")
-        modified_time = uploaded_file.get("modifiedTime")
+    file_item = FileItem(
+        id=uploaded_file.get("id", ""),
+        name=uploaded_file.get("name", ""),
+        mime_type=mime_type,
+        category=category,
+        size=size if size else None,
+        size_formatted=format_file_size(int(size)) if size else None,
+        modified_time=modified_time,
+        modified_time_formatted=format_modified_time(modified_time) if modified_time else None,
+        thumbnail_link=uploaded_file.get("thumbnailLink"),
+        web_view_link=uploaded_file.get("webViewLink"),
+        is_folder=is_folder,
+        item_count=None
+    )
 
-        file_item = FileItem(
-            id=uploaded_file.get("id", ""),
-            name=uploaded_file.get("name", ""),
-            mime_type=mime_type,
-            category=category,
-            size=size if size else None,
-            size_formatted=format_file_size(int(size)) if size else None,
-            modified_time=modified_time,
-            modified_time_formatted=format_modified_time(modified_time) if modified_time else None,
-            thumbnail_link=uploaded_file.get("thumbnailLink"),
-            web_view_link=uploaded_file.get("webViewLink"),
-            is_folder=is_folder,
-            item_count=None
-        )
-
-        return file_item
-
-    except GoogleDriveError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+    return file_item

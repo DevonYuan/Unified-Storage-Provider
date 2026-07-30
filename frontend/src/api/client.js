@@ -42,6 +42,16 @@ export const authApi = {
     });
   },
 
+  async startMicrosoftOAuth(redirectUri) {
+    return request('/auth/oauth/start', {
+      method: 'POST',
+      body: {
+        provider: 'onedrive',
+        redirect_uri: redirectUri,
+      },
+    });
+  },
+
   async handleOAuthCallback(provider, code, state, redirectUri) {
     return request('/auth/oauth/callback', {
       method: 'POST',

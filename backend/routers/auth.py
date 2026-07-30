@@ -18,6 +18,15 @@ from services.google_oauth import (
     get_keyring_key,
     GoogleOAuthError,
 )
+from services.microsoft_oauth import (
+    build_authorization_url as build_ms_auth_url,
+    validate_state as validate_ms_state,
+    exchange_code_for_tokens as exchange_ms_code,
+    get_user_info as get_ms_user_info,
+    store_refresh_token as store_ms_refresh_token,
+    get_keyring_key as get_ms_keyring_key,
+    MicrosoftOAuthError,
+)
 from config import get_config
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -56,14 +65,17 @@ def start_oauth(request: OAuthStartRequest):
     Initiate OAuth flow for a cloud storage provider.
     Returns the authorization URL and state parameter.
     """
-    if request.provider != ProviderType.GOOGLE_DRIVE:
+    if request.provider == ProviderType.GOOGLE_DRIVE:
+        redirect_uri = str(request.redirect_uri)
+        auth_url, state = build_authorization_url(redirect_uri)
+    elif request.provider == ProviderType.ONEDRIVE:
+        redirect_uri = str(request.redirect_uri)
+        auth_url, state = build_ms_auth_url(redirect_uri)
+    else:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail=f"OAuth flow for {request.provider.value} not implemented yet"
         )
-
-    redirect_uri = str(request.redirect_uri)
-    auth_url, state = build_authorization_url(redirect_uri)
 
     return OAuthStartResponse(auth_url=auth_url, state=state)
 
@@ -144,6 +156,88 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
         return RedirectResponse(url=frontend_url)
     except Exception as e:
         # Redirect to frontend with error
+        frontend_url = f"http://localhost:5173/signup?error=OAuth callback failed: {str(e)}"
+        return RedirectResponse(url=frontend_url)
+
+
+@router.get("/microsoft/callback")
+async def microsoft_oauth_callback(code: str, state: str, db: Session = Depends(get_db)):
+    """
+    Handle OAuth callback from Microsoft (redirect endpoint).
+    This is the actual redirect URI registered in Azure AD.
+    Exchanges authorization code for tokens and stores them securely.
+    """
+    # Validate state parameter (CSRF protection)
+    redirect_uri = validate_ms_state(state)
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OAuth state parameter"
+        )
+
+    # Verify the redirect URI matches our backend callback URL
+    config = get_config()
+    expected_redirect_uri = config.microsoft_oauth.redirect_uri
+    if redirect_uri != expected_redirect_uri:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Redirect URI mismatch"
+        )
+
+    try:
+        # Exchange authorization code for tokens
+        token_response = await exchange_ms_code(code, redirect_uri)
+
+        # Get user info from Microsoft Graph
+        user_info = await get_ms_user_info(token_response["access_token"])
+
+        # Microsoft returns userPrincipalName or mail
+        user_id = user_info.get("id", "")
+        email = user_info.get("mail") or user_info.get("userPrincipalName", "Unknown")
+
+        # Store refresh token securely in keyring
+        keyring_key = get_ms_keyring_key(user_id)
+        if token_response.get("refresh_token"):
+            store_ms_refresh_token(keyring_key, token_response["refresh_token"])
+
+        # Calculate token expiry
+        token_expiry = datetime.utcnow() + timedelta(seconds=token_response["expires_in"])
+
+        # Create or update connected account
+        existing_account = db.query(ConnectedAccount).filter(
+            ConnectedAccount.provider == ProviderType.ONEDRIVE,
+            ConnectedAccount.keyring_key == keyring_key
+        ).first()
+
+        if existing_account:
+            account = existing_account
+            account.display_name = email
+            account.access_token = token_response["access_token"]
+            account.refresh_token = token_response.get("refresh_token")
+            account.token_expiry = token_expiry
+            account.updated_at = datetime.utcnow()
+        else:
+            account = ConnectedAccount(
+                provider=ProviderType.ONEDRIVE,
+                display_name=email,
+                keyring_key=keyring_key,
+                access_token=token_response["access_token"],
+                refresh_token=token_response.get("refresh_token"),
+                token_expiry=token_expiry,
+            )
+            db.add(account)
+
+        db.commit()
+        db.refresh(account)
+
+        # Redirect back to frontend signup page
+        frontend_url = "http://localhost:5173/signup"
+        return RedirectResponse(url=frontend_url)
+
+    except MicrosoftOAuthError as e:
+        frontend_url = f"http://localhost:5173/signup?error={e}"
+        return RedirectResponse(url=frontend_url)
+    except Exception as e:
         frontend_url = f"http://localhost:5173/signup?error=OAuth callback failed: {str(e)}"
         return RedirectResponse(url=frontend_url)
 

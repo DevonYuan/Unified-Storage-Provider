@@ -257,3 +257,4 @@ Pass `provider` as a prop and conditionally apply the class:
 - **Microsoft consent prompt**: Unlike Google's `prompt=consent`, Microsoft uses `prompt=select_account` or omitting the parameter. The `offline_access` scope ensures a refresh token is returned on first consent.
 - **OneDrive personal vs business**: Using `/common` in the auth endpoint allows both. File listing uses `/me/drive/...` which works for both.
 - **Thumbnail handling**: Microsoft Graph returns thumbnails as an array; need to pick the first available size. This can be deferred to Phase 5.
+- **Microsoft Client**: Microsoft Client ID and Client Secret expire in every 2 years (Expires 7/28/2028)

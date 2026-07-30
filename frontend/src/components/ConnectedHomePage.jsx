@@ -31,10 +31,17 @@ export function ConnectedHomePage() {
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
 
+  // Connected accounts state
+  const [accounts, setAccounts] = useState([])
+  const [selectedAccountId, setSelectedAccountId] = useState(null)
+
   // Folder navigation state
   const [currentFolderId, setCurrentFolderId] = useState('root')
   const [currentFolderName, setCurrentFolderName] = useState('All files')
   const [folderStack, setFolderStack] = useState([])
+
+  // Get the currently selected account
+  const selectedAccount = accounts.find(acc => acc.account_id === selectedAccountId)
 
   // Filter and sort options - simplified to only what API supports
   const filterOptions = [
@@ -51,31 +58,43 @@ export function ConnectedHomePage() {
     { value: 'size', label: 'Size' },
   ]
 
-  const fetchFiles = async (folderId = null) => {
-    if (!isGoogleConnected) {
-      setLoading(false)
-      return
+  const loadAccounts = async () => {
+    try {
+      const response = await storageApi.listStorageAccounts()
+      const accts = response.storage_accounts || []
+      setAccounts(accts)
+      // Auto-select first account if none selected or current selection is gone
+      if (!selectedAccountId || !accts.find(a => a.account_id === selectedAccountId)) {
+        if (accts.length > 0) {
+          setSelectedAccountId(accts[0].account_id)
+        }
+      }
+      return accts
+    } catch (err) {
+      console.error('Failed to load accounts:', err)
+      return []
     }
+  }
 
+  const fetchFiles = async (folderId = null) => {
     const targetId = folderId ?? currentFolderId
 
     setLoading(true)
     setError(null)
 
     try {
-      // Get the first Google Drive account
-      const accountsResponse = await storageApi.listStorageAccounts()
-      const accounts = accountsResponse.storage_accounts || []
-      const googleAccount = accounts.find(acc => acc.provider === 'google_drive')
+      // Refresh accounts list
+      const accts = await loadAccounts()
+      const account = accts.find(acc => acc.account_id === selectedAccountId)
 
-      if (!googleAccount) {
-        setError('No Google Drive account connected')
+      if (!account) {
+        setError('No storage account selected')
         setLoading(false)
         return
       }
 
       // Fetch files from backend API for the current folder
-      const response = await storageApi.listFiles(googleAccount.account_id, targetId)
+      const response = await storageApi.listFiles(account.account_id, targetId)
       const fileItems = response.items || []
 
       // Transform API response to match FileCard expectations
@@ -95,7 +114,7 @@ export function ConnectedHomePage() {
       })))
     } catch (err) {
       console.error('Failed to fetch files:', err)
-      setError('Failed to load files from Google Drive')
+      setError('Failed to load files')
     } finally {
       setLoading(false)
     }
@@ -112,18 +131,13 @@ export function ConnectedHomePage() {
     setUploadError(null)
 
     try {
-      // Get the first Google Drive account
-      const accountsResponse = await storageApi.listStorageAccounts()
-      const accounts = accountsResponse.storage_accounts || []
-      const googleAccount = accounts.find(acc => acc.provider === 'google_drive')
-
-      if (!googleAccount) {
-        setUploadError('No Google Drive account connected')
+      if (!selectedAccountId) {
+        setUploadError('No storage account selected')
         return
       }
 
       // Upload file to backend API for the current folder
-      const uploadedFile = await storageApi.uploadFile(googleAccount.account_id, file, currentFolderId)
+      const uploadedFile = await storageApi.uploadFile(selectedAccountId, file, currentFolderId)
 
       // Add the uploaded file to the beginning of the list
       setFiles(prev => [uploadedFile, ...prev])
@@ -182,8 +196,14 @@ export function ConnectedHomePage() {
   }
 
   useEffect(() => {
-    fetchFiles(currentFolderId)
-  }, [isGoogleConnected, currentFolderId])
+    loadAccounts()
+  }, [])
+
+  useEffect(() => {
+    if (selectedAccountId) {
+      fetchFiles(currentFolderId)
+    }
+  }, [selectedAccountId, currentFolderId])
 
   useEffect(() => {
     checkGoogleConnection()
@@ -274,6 +294,26 @@ export function ConnectedHomePage() {
 
           {/* Controls */}
           <div className="connected-home-page__controls">
+            {/* Provider selector */}
+            {accounts.length > 1 && (
+              <div className="connected-home-page__dropdown">
+                <select
+                  value={selectedAccountId || ''}
+                  onChange={(e) => {
+                    setSelectedAccountId(Number(e.target.value))
+                    navigateToRoot()
+                  }}
+                  className="connected-home-page__provider-select"
+                >
+                  {accounts.map(acc => (
+                    <option key={acc.account_id} value={acc.account_id}>
+                      {acc.provider === 'google_drive' ? 'Google Drive' : 'OneDrive'} · {acc.display_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Filter dropdown */}
             <div className="connected-home-page__dropdown">
               <button
@@ -425,7 +465,7 @@ export function ConnectedHomePage() {
             <div className="connected-home-page__empty">
               <Folder className="connected-home-page__empty-icon" size={64} />
               <h2>No files found</h2>
-              <p>Connect Google Drive to see your files</p>
+              <p>{accounts.length === 0 ? 'Connect a storage provider to see your files' : 'This folder is empty'}</p>
             </div>
           ) : (
             <div
@@ -438,6 +478,7 @@ export function ConnectedHomePage() {
                   key={file.id}
                   file={file}
                   viewMode={viewMode}
+                  provider={selectedAccount?.provider}
                   onOpen={handleOpenFile}
                 />
               ))}

@@ -32,6 +32,7 @@ function getCategoryIcon(category) {
 export function FileCard({
   file,
   viewMode = 'grid',
+  provider = 'google_drive',
   onOpen,
 }) {
   const category = file.category
@@ -55,7 +56,10 @@ export function FileCard({
       onClick={handleClick}
     >
       {/* Origin indicator - top left */}
-      <div className="file-card__origin" title="Google Drive" />
+      <div
+        className={`file-card__origin ${provider === 'onedrive' ? 'file-card__origin--onedrive' : 'file-card__origin--google'}`}
+        title={provider === 'onedrive' ? 'OneDrive' : 'Google Drive'}
+      />
 
       {/* Card content */}
       <div className={contentClass}>
