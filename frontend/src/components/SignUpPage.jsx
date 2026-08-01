@@ -58,10 +58,14 @@ export function SignUpPage() {
       try {
         const data = await authApi.listAccounts()
         setAccounts(data.accounts || [])
-        // Check if Google Drive is already connected
+        // Check which providers are already connected
         const googleAccount = data.accounts?.find(a => a.provider === 'google_drive')
         if (googleAccount) {
           setGoogleConnected(true)
+        }
+        const msAccount = data.accounts?.find(a => a.provider === 'onedrive')
+        if (msAccount) {
+          setMicrosoftConnected(true)
         }
       } catch (err) {
         console.error('Failed to load accounts:', err)

@@ -50,6 +50,7 @@ def build_authorization_url(redirect_uri: str) -> tuple[str, str]:
         "response_type": "code",
         "scope": " ".join(ms_config.scopes),
         "response_mode": "query",
+        "state": state,
     }
 
     auth_url = f"{ms_config.auth_uri}?{urlencode(params)}"
