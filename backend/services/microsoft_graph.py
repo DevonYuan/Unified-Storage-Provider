@@ -191,6 +191,57 @@ async def upload_drive_file(
         return _ms_item_to_fileitem(response.json())
 
 
+async def create_drive_folder(
+    account: "ConnectedAccount",
+    db: Session,
+    folder_name: str,
+    parent_id: str = "root",
+) -> Dict[str, Any]:
+    """Create a new folder in OneDrive."""
+    access_token = await get_valid_access_token(account, db)
+
+    if parent_id == "root":
+        url = f"{GRAPH_BASE}/me/drive/root/children"
+    else:
+        url = f"{GRAPH_BASE}/me/drive/items/{parent_id}/children"
+
+    body = {
+        "name": folder_name,
+        "folder": {},
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.post(
+                        url,
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json=body,
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code not in (200, 201):
+            error_data = response.json()
+            raise MicrosoftGraphError(
+                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+            )
+
+        return _ms_item_to_fileitem(response.json())
+
+
 def _ms_item_to_fileitem(ms_item: Dict[str, Any]) -> Dict[str, Any]:
     """
     Translate a Microsoft Graph driveItem into our provider-agnostic format.

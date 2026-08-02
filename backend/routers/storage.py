@@ -9,11 +9,12 @@ from datetime import datetime
 
 from database_driver import get_db
 from models import ConnectedAccount, ProviderType
-from services.google_drive import list_drive_files, GoogleDriveError, upload_drive_file
+from services.google_drive import list_drive_files, GoogleDriveError, upload_drive_file, create_drive_folder
 from services.microsoft_graph import (
     list_drive_files as list_ms_files,
     MicrosoftGraphError,
     upload_drive_file as upload_ms_file,
+    create_drive_folder as create_ms_folder,
 )
 
 
@@ -276,3 +277,35 @@ async def upload_file(
     )
 
     return file_item
+
+
+class CreateFolderRequest(BaseModel):
+    folder_name: str
+
+
+@router.post("/{account_id}/folders")
+async def create_folder(
+    account_id: int,
+    request: CreateFolderRequest,
+    parent_id: str = "root",
+    db: Session = Depends(get_db),
+):
+    """Create a new folder in a connected storage account."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if account.provider == ProviderType.GOOGLE_DRIVE:
+        try:
+            folder = await create_drive_folder(account, db, request.folder_name, parent_id)
+        except GoogleDriveError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    elif account.provider == ProviderType.ONEDRIVE:
+        try:
+            folder = await create_ms_folder(account, db, request.folder_name, parent_id)
+        except MicrosoftGraphError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        raise HTTPException(status_code=400, detail=f"Folder creation not supported for {account.provider.value}")
+
+    return folder

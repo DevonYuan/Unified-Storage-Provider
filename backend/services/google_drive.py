@@ -205,6 +205,53 @@ async def upload_drive_file(
         return response.json()
 
 
+async def create_drive_folder(
+    account: "ConnectedAccount",
+    db: Session,
+    folder_name: str,
+    parent_id: str = "root",
+) -> Dict[str, Any]:
+    """Create a new folder in Google Drive."""
+    access_token = await get_valid_access_token(account, db)
+
+    file_metadata = {
+        "name": folder_name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_id] if parent_id != "root" else [],
+    }
+    if parent_id == "root":
+        del file_metadata["parents"]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            "https://www.googleapis.com/drive/v3/files",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=file_metadata,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.post(
+                        "https://www.googleapis.com/drive/v3/files",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json=file_metadata,
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        return response.json()
+
+
 def get_mime_type_category(mime_type: str) -> str:
     """
     Categorize a MIME type for display.

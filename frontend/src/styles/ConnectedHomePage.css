@@ -514,6 +514,25 @@
   flex-shrink: 0;
 }
 
+.connected-home-page__upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.connected-home-page__upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .connected-home-page__empty-icon {
   color: var(--fg-subtle);
 }
@@ -540,6 +559,55 @@
 .connected-home-page__grid--list {
   grid-template-columns: 1fr;
   gap: 4px;
+}
+
+/* New Folder form */
+.connected-home-page__new-folder-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.connected-home-page__new-folder-input {
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--fg);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 150px;
+  outline: none;
+}
+
+.connected-home-page__new-folder-input:focus {
+  border-color: var(--accent);
+}
+
+.connected-home-page__new-folder-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.connected-home-page__new-folder-confirm {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--bg);
+  background-color: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.connected-home-page__new-folder-confirm:hover:not(:disabled) {
+  background-color: #1ea74d;
+}
+
+.connected-home-page__new-folder-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* File Card */

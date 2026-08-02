@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Loader2,
   Folder,
+  FolderPlus,
   Upload,
 } from 'lucide-react'
 import { FileCard } from './FileCard.jsx'
@@ -28,6 +29,9 @@ export function ConnectedHomePage() {
   const [filterBy, setFilterBy] = useState('all')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
 
@@ -149,6 +153,24 @@ export function ConnectedHomePage() {
       setUploadError('Failed to upload file')
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim()
+    if (!name || !selectedAccountId) return
+
+    setCreatingFolder(true)
+    try {
+      const newFolder = await storageApi.createFolder(selectedAccountId, name, currentFolderId)
+      setFiles(prev => [newFolder, ...prev])
+      setNewFolderName('')
+      setShowNewFolderInput(false)
+    } catch (err) {
+      console.error('Failed to create folder:', err)
+      setError('Failed to create folder')
+    } finally {
+      setCreatingFolder(false)
     }
   }
 
@@ -394,6 +416,40 @@ export function ConnectedHomePage() {
               >
                 <List className="connected-home-page__view-icon" size={16} />
               </button>
+            </div>
+
+            {/* New Folder button */}
+            <div className="connected-home-page__upload">
+              {showNewFolderInput ? (
+                <div className="connected-home-page__new-folder-form">
+                  <input
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setShowNewFolderInput(false); setNewFolderName(''); } }}
+                    placeholder="Folder name..."
+                    className="connected-home-page__new-folder-input"
+                    autoFocus
+                    disabled={creatingFolder}
+                  />
+                  <button
+                    onClick={handleCreateFolder}
+                    disabled={creatingFolder || !newFolderName.trim()}
+                    className="connected-home-page__new-folder-confirm"
+                  >
+                    {creatingFolder ? '...' : 'Create'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowNewFolderInput(true)}
+                  className="connected-home-page__upload-btn"
+                  disabled={!selectedAccountId}
+                >
+                  <FolderPlus className="connected-home-page__upload-icon" size={16} />
+                  New Folder
+                </button>
+              )}
             </div>
 
             {/* Upload button */}

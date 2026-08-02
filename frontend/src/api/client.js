@@ -125,6 +125,13 @@ export const storageApi = {
 
     return response.json();
   },
+
+  async createFolder(accountId, folderName, parentId = 'root') {
+    return request(`/storage/${accountId}/folders?parent_id=${parentId}`, {
+      method: 'POST',
+      body: { folder_name: folderName },
+    });
+  },
 };
 
 export default {
