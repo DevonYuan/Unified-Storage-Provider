@@ -24,3 +24,8 @@ Firstly, we will not be chunking files. Secondly, let us discuss the plan for ha
 I am sure that there are more benefits as well as trade-offs, but these are the most immediate ones that come to mind. As for implementing this, we can create a separate table in the database with one row, where we keep on updating the variable telling us whether to add new uploads to Google Drive or OneDrive. Given that we are already using a SQLite database for phases 2 and 3, this seems to be the most efficent solution. <br>
 
 As for handling new file uploads in existing folders: We will keep them in the respective provider's folder. For example, if I have a folder in Google Drive and I want to create a subfolder, that subfolder will NOT be "provisioned" in OneDrive. While this is a bit inefficient, consider Goal #2: This is to make sure that you can easily download the files / folders if you wanted to. While OmniDrive *could* have logic that will pull the files from each provider when you try to download a folder, that also means you can't download the file directory from Google Drive (Since 1 file would be located in OneDrive).  
+
+## Defining the User Experience 
+Before the implementation plan, let's figure out what the final state of OmniDrive *should* be so we have a clear idea of the functionalities that we want. 
+
+Right now, when the user opens OmniDrive, they can click a button that opens up a drop-down with 2 options, where you can navigate Google Drive and OneDrive effectively. 
