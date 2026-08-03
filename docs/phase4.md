@@ -28,4 +28,8 @@ As for handling new file uploads in existing folders: We will keep them in the r
 ## Defining the User Experience 
 Before the implementation plan, let's figure out what the final state of OmniDrive *should* be so we have a clear idea of the functionalities that we want. 
 
-Right now, when the user opens OmniDrive, they can click a button that opens up a drop-down with 2 options, where you can navigate Google Drive and OneDrive effectively. 
+Right now, when the user opens OmniDrive, they can click a button that opens up a drop-down with 2 options, where you can navigate Google Drive and OneDrive effectively by choosing which provider. I intend to keep this, BUT:
+- We are going to add a new option, where we call it OmniDrive. 
+- The user can click on this option to experience the purpose of the app: A unified storage pool that "merges" the 2 other providers together. 
+- This will become the new default option. 
+- When we use this option, just for clarity we can include a small green or blue dot next to each file name to indicate whether the file is stored in Google Drive or OneDrive. 
