@@ -32,4 +32,4 @@ Right now, when the user opens OmniDrive, they can click a button that opens up 
 - We are going to add a new option, where we call it OmniDrive. 
 - The user can click on this option to experience the purpose of the app: A unified storage pool that "merges" the 2 other providers together. 
 - This will become the new default option. 
-- When we use this option, just for clarity we can include a small green or blue dot next to each file name to indicate whether the file is stored in Google Drive or OneDrive. 
+- When we use this option, just for clarity we can include a small green or blue dot next to each file name to indicate whether the file is stored in Google Drive or OneDrive. For merged folders, we can have a "split" indicator with green on 1 side and blue on the other. 
