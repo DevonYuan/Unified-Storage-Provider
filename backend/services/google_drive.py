@@ -395,3 +395,79 @@ async def upload_file_to_drive(
             return await get_file_metadata(account, db, file_id)
         else:
             raise GoogleDriveError("Failed to retrieve uploaded file metadata")
+
+
+async def delete_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+) -> None:
+    """Delete a file or folder from Google Drive."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.delete(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.delete(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code not in (200, 204):
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+
+async def download_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+) -> tuple:
+    """Download a file from Google Drive. Returns (content_bytes, filename, mime_type)."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        # First get file metadata for the name and mime type
+        meta = await get_file_metadata(account, db, file_id)
+        filename = meta.get("name", "download")
+        mime_type = meta.get("mimeType", "application/octet-stream")
+
+        # Download the file content
+        response = await client.get(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.get(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        return response.content, filename, mime_type

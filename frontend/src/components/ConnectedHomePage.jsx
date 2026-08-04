@@ -17,6 +17,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { FileCard } from './FileCard.jsx'
+import { ContextMenu } from './ContextMenu.jsx'
 import '../styles/ConnectedHomePage.css'
 
 export function ConnectedHomePage() {
@@ -34,6 +35,9 @@ export function ConnectedHomePage() {
   const [newFolderName, setNewFolderName] = useState('')
   const [showFilterMenu, setShowFilterMenu] = useState(false)
   const [showSortMenu, setShowSortMenu] = useState(false)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState(null) // { x, y, file } or null
 
   // Connected accounts state
   const [accounts, setAccounts] = useState([])
@@ -375,6 +379,66 @@ export function ConnectedHomePage() {
     }
     return null
   })()
+  
+  // ── Context menu handlers ─────────────────────────────────────────
+
+  const handleContextMenu = (e, file) => {
+    setContextMenu({ x: e.clientX, y: e.clientY, file })
+  }
+
+  const closeContextMenu = () => {
+    setContextMenu(null)
+  }
+
+  const handleRename = async (file) => {
+    const newName = window.prompt('Enter new name:', file.name)
+    if (!newName || newName.trim() === '' || newName.trim() === file.name) return
+
+    try {
+      if (selectedView === 'omnidrive') {
+        await omnidriveApi.renameItem(file.id, newName.trim())
+      } else {
+        await storageApi.renameFile(selectedView, file.id, newName.trim())
+      }
+      // Refresh to show the renamed file
+      fetchFiles()
+    } catch (err) {
+      setError(`Failed to rename: ${err.message}`)
+    }
+  }
+
+  const handleDelete = async (file) => {
+    const confirmed = window.confirm(`Are you sure you want to delete "${file.name}"?`)
+    if (!confirmed) return
+
+    try {
+      if (selectedView === 'omnidrive') {
+        await omnidriveApi.deleteItem(file.id)
+      } else {
+        await storageApi.deleteFile(selectedView, file.id)
+      }
+      // Remove from local state immediately
+      setFiles(prev => prev.filter(f => f.id !== file.id))
+    } catch (err) {
+      setError(`Failed to delete: ${err.message}`)
+    }
+  }
+
+  const handleDownload = (file) => {
+    let url
+    if (selectedView === 'omnidrive') {
+      url = omnidriveApi.getDownloadUrl(file.id)
+    } else {
+      url = storageApi.getDownloadUrl(selectedView, file.id)
+    }
+    // Trigger download by creating a temporary anchor
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.name
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
 
   useEffect(() => {
     loadAccounts()
@@ -723,12 +787,24 @@ export function ConnectedHomePage() {
                   viewMode={viewMode}
                   providers={file.providers || (selectedAccount?.provider === 'google_drive' ? ['google'] : ['onedrive'])}
                   onOpen={handleOpenFile}
+                  onContextMenu={handleContextMenu}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          file={contextMenu.file}
+          onClose={closeContextMenu}
+          onRename={handleRename}
+          onDelete={handleDelete}
+          onDownload={handleDownload}
+        />
+      )}
     </div>
   )
 }

@@ -132,6 +132,23 @@ export const storageApi = {
       body: { folder_name: folderName },
     });
   },
+
+  async renameFile(accountId, fileId, name) {
+    return request(`/storage/${accountId}/files/${encodeURIComponent(fileId)}`, {
+      method: 'PATCH',
+      body: { name },
+    });
+  },
+
+  async deleteFile(accountId, fileId) {
+    return request(`/storage/${accountId}/files/${encodeURIComponent(fileId)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  getDownloadUrl(accountId, fileId) {
+    return `${API_BASE}/storage/${accountId}/files/${encodeURIComponent(fileId)}/download`;
+  },
 };
 
 export const omnidriveApi = {
@@ -187,6 +204,10 @@ export const omnidriveApi = {
     return request('/omnidrive/refresh', {
       method: 'POST',
     });
+  },
+
+  getDownloadUrl(virtualId) {
+    return `${API_BASE}/omnidrive/files/${encodeURIComponent(virtualId)}/download`;
   },
 };
 

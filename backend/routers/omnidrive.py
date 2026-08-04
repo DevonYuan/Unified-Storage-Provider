@@ -185,6 +185,42 @@ async def delete_file(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+@router.get("/files/{virtual_id}/download")
+async def download_file(
+    virtual_id: str,
+    db: Session = Depends(get_db),
+):
+    """Download a file from the unified view."""
+    from fastapi.responses import StreamingResponse
+    from io import BytesIO
+
+    provider, real_id = parse_virtual_id(virtual_id)
+    google_account, ms_account = get_provider_accounts(db)
+
+    if provider == "merged":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot download a merged folder directly")
+
+    account = google_account if provider == "google" else ms_account
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No {provider} account connected")
+
+    try:
+        if account.provider.value == "google_drive":
+            from services.google_drive import download_drive_file
+            content, filename, mime_type = await download_drive_file(account, db, real_id)
+        else:
+            from services.microsoft_graph import download_drive_file as download_ms_file
+            content, filename, mime_type = await download_ms_file(account, db, real_id)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ── Maintenance ──────────────────────────────────────────────────────────────
 
 @router.post("/refresh")

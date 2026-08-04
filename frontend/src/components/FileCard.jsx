@@ -34,6 +34,7 @@ export function FileCard({
   viewMode = 'grid',
   providers = ['google'],
   onOpen,
+  onContextMenu,
 }) {
   const category = file.category
   const isFolder = file.is_folder
@@ -62,6 +63,14 @@ export function FileCard({
     }
   }
 
+  const handleContextMenu = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (onContextMenu) {
+      onContextMenu(e, file)
+    }
+  }
+
   const iconSize = viewMode === 'list' ? 24 : 64
   const contentClass = viewMode === 'list' ? 'file-card__content--list' : 'file-card__content'
 
@@ -69,6 +78,7 @@ export function FileCard({
     <article
       className={`file-card ${viewMode === 'list' ? 'file-card--list' : 'file-card--grid'}`}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
     >
       {/* Origin indicator - top left */}
       <div

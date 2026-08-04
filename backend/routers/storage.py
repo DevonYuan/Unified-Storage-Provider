@@ -309,3 +309,112 @@ async def create_folder(
         raise HTTPException(status_code=400, detail=f"Folder creation not supported for {account.provider.value}")
 
     return folder
+
+
+class RenameRequest(BaseModel):
+    name: str
+
+
+@router.patch("/{account_id}/files/{file_id}")
+async def rename_file(
+    account_id: int,
+    file_id: str,
+    request: RenameRequest,
+    db: Session = Depends(get_db),
+):
+    """Rename a file or folder on a specific provider."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    import httpx
+    if account.provider == ProviderType.GOOGLE_DRIVE:
+        from services.google_drive import get_valid_access_token as google_token
+        token = await google_token(account, db)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.patch(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"name": request.name},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail=resp.json().get("error", {}).get("message", "Unknown error"))
+            return resp.json()
+    elif account.provider == ProviderType.ONEDRIVE:
+        from services.microsoft_graph import get_valid_access_token as ms_token
+        token = await ms_token(account, db)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.patch(
+                f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"name": request.name},
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail=resp.json().get("error", {}).get("message", "Unknown error"))
+            return resp.json()
+    else:
+        raise HTTPException(status_code=400, detail=f"Rename not supported for {account.provider.value}")
+
+
+@router.delete("/{account_id}/files/{file_id}")
+async def delete_file(
+    account_id: int,
+    file_id: str,
+    db: Session = Depends(get_db),
+):
+    """Delete a file or folder from a specific provider."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    if account.provider == ProviderType.GOOGLE_DRIVE:
+        try:
+            from services.google_drive import delete_drive_file
+            await delete_drive_file(account, db, file_id)
+        except GoogleDriveError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    elif account.provider == ProviderType.ONEDRIVE:
+        try:
+            from services.microsoft_graph import delete_drive_file as delete_ms_file
+            await delete_ms_file(account, db, file_id)
+        except MicrosoftGraphError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        raise HTTPException(status_code=400, detail=f"Delete not supported for {account.provider.value}")
+
+    return {"status": "deleted", "file_id": file_id}
+
+
+@router.get("/{account_id}/files/{file_id}/download")
+async def download_file(
+    account_id: int,
+    file_id: str,
+    db: Session = Depends(get_db),
+):
+    """Download a file from a specific provider."""
+    from fastapi.responses import StreamingResponse
+    from io import BytesIO
+
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import download_drive_file
+            content, filename, mime_type = await download_drive_file(account, db, file_id)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import download_drive_file as download_ms_file
+            content, filename, mime_type = await download_ms_file(account, db, file_id)
+        else:
+            raise HTTPException(status_code=400, detail=f"Download not supported for {account.provider.value}")
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return StreamingResponse(
+        BytesIO(content),
+        media_type=mime_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
