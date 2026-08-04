@@ -12,7 +12,7 @@ To achieve Goal #2, my plan is to create a new tree to represent OmniDrive's int
 
 This will also help us achieve goal 1 in the process, but there is a trade-off involved: 
 - Pro: Local data storage is not as important, because we can create the internal file systems ourselves every time. We should not store the internal file system locally, especially when it is prone to changing without us knowing (Reference Goal #2). Note that assuming the user only uses OmniDrive (i. e. does not use Google Drive or OneDrive separately), the results will be the same every time. 
-- Con: It is a bit inefficient to recreate the tree every single time. However, this is mitigated by the fact that if the user only uses OmniDrive, then it will be a relatively smooth process. 
+- Con: It is a bit inefficient to recreate the tree every single time. However, this is mitigated by the fact that if the user only uses OmniDrive, then it should be a relatively very fast process. 
 
 For the situations where we are forcing the renaming of files, I propose adding "-google" and "-onedrive" at the end of the files. 
 
