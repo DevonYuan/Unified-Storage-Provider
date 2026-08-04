@@ -47,8 +47,8 @@ Add support for Microsoft OneDrive. The end goal is that you can effectively nav
 ### Phase 4 - Unified Storage Pool
 Implement the core functionality that merges the storage from both providers into a single virtual file system. This includes handling automatic distribution across providers based on available space, and seamless retrieval regardless of where the file is physically stored. The user should experience this as a single, unified drive with combined storage capacity. The logic behind the internal file system is explained more in-depth in Phase 4's dedicated document, `docs/phase4.md`
 
-### Phase 5 - Polishing (Optional)
-Explore different UI styles and experiment with different AI tools to only enhance the UI, but do NOT break the functionality of the app. Just for the aesthetics, I might as well include a "tree" view where you can see a graph, but that is not related to functionality. 
+### Phase 5 - Polishing the User Experience 
+Explore different UI styles and experiment with different AI tools to only enhance the UI, but do NOT break the functionality of the app. Just for the aesthetics, I might as well include a "tree" view where you can see a graph, but that is not related to functionality. Also, along the way I noticed that there were several features that were missing, but do not have to do with the Google Drive and OneDrive implemenetation, such as the ability to delte, rename, move, download files, and more. 
 
 ## Phase 6 - Packaging as a Desktop App
 Work in progress. 
