@@ -189,12 +189,12 @@ async def list_files(account_id: int, parent_id: str = "root", page_size: int = 
         try:
             files = await list_drive_files(account, db, parent_id=parent_id, page_size=page_size)
         except GoogleDriveError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=f"Google Drive: {e}")
     elif account.provider == ProviderType.ONEDRIVE:
         try:
             files = await list_ms_files(account, db, parent_id=parent_id, page_size=page_size)
         except MicrosoftGraphError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=f"OneDrive: {e}")
     else:
         raise HTTPException(status_code=400, detail=f"File listing not supported for {account.provider.value}")
 

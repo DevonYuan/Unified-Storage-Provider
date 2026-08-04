@@ -109,15 +109,15 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
         token_response = await exchange_code_for_tokens(code, redirect_uri)
 
         # Get user info from Google
-        user_info = await get_user_info(token_response.access_token)
+        user_info = await get_user_info(token_response["access_token"])
 
         # Store refresh token securely in keyring
-        keyring_key = get_keyring_key(user_info.id)
-        if token_response.refresh_token:
-            store_refresh_token(keyring_key, token_response.refresh_token)
+        keyring_key = get_keyring_key(user_info["id"])
+        if token_response.get("refresh_token"):
+            store_refresh_token(keyring_key, token_response["refresh_token"])
 
         # Calculate token expiry
-        token_expiry = datetime.utcnow() + timedelta(seconds=token_response.expires_in)
+        token_expiry = datetime.utcnow() + timedelta(seconds=token_response["expires_in"])
 
         # Create or update connected account
         existing_account = db.query(ConnectedAccount).filter(
@@ -127,18 +127,27 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
 
         if existing_account:
             account = existing_account
-            account.display_name = user_info.email
-            account.access_token = token_response.access_token
-            account.refresh_token = token_response.refresh_token
+            account.display_name = user_info["email"]
+            account.access_token = token_response["access_token"]
+            account.refresh_token = token_response.get("refresh_token")
             account.token_expiry = token_expiry
             account.updated_at = datetime.utcnow()
+
+            # Clean up any stale duplicate accounts for the same provider + keyring_key
+            duplicates = db.query(ConnectedAccount).filter(
+                ConnectedAccount.provider == ProviderType.GOOGLE_DRIVE,
+                ConnectedAccount.keyring_key == keyring_key,
+                ConnectedAccount.id != existing_account.id,
+            ).all()
+            for dup in duplicates:
+                db.delete(dup)
         else:
             account = ConnectedAccount(
                 provider=ProviderType.GOOGLE_DRIVE,
-                display_name=user_info.email,
+                display_name=user_info["email"],
                 keyring_key=keyring_key,
-                access_token=token_response.access_token,
-                refresh_token=token_response.refresh_token,
+                access_token=token_response["access_token"],
+                refresh_token=token_response.get("refresh_token"),
                 token_expiry=token_expiry,
             )
             db.add(account)
@@ -146,8 +155,8 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
         db.commit()
         db.refresh(account)
 
-        # Redirect back to frontend signup page
-        frontend_url = "http://localhost:5173/signup"
+        # Redirect to home for reconnects, signup for new accounts
+        frontend_url = "http://localhost:5173/home" if existing_account else "http://localhost:5173/signup"
         return RedirectResponse(url=frontend_url)
 
     except GoogleOAuthError as e:
@@ -216,6 +225,15 @@ async def microsoft_oauth_callback(code: str, state: str, db: Session = Depends(
             account.refresh_token = token_response.get("refresh_token")
             account.token_expiry = token_expiry
             account.updated_at = datetime.utcnow()
+
+            # Clean up any stale duplicate accounts for the same provider + keyring_key
+            duplicates = db.query(ConnectedAccount).filter(
+                ConnectedAccount.provider == ProviderType.ONEDRIVE,
+                ConnectedAccount.keyring_key == keyring_key,
+                ConnectedAccount.id != existing_account.id,
+            ).all()
+            for dup in duplicates:
+                db.delete(dup)
         else:
             account = ConnectedAccount(
                 provider=ProviderType.ONEDRIVE,
@@ -230,8 +248,8 @@ async def microsoft_oauth_callback(code: str, state: str, db: Session = Depends(
         db.commit()
         db.refresh(account)
 
-        # Redirect back to frontend signup page
-        frontend_url = "http://localhost:5173/signup"
+        # Redirect to home for reconnects, signup for new accounts
+        frontend_url = "http://localhost:5173/home" if existing_account else "http://localhost:5173/signup"
         return RedirectResponse(url=frontend_url)
 
     except MicrosoftOAuthError as e:

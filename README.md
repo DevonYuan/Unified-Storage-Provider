@@ -50,6 +50,9 @@ Implement the core functionality that merges the storage from both providers int
 ### Phase 5 - Polishing (Optional)
 Explore different UI styles and experiment with different AI tools to only enhance the UI, but do NOT break the functionality of the app. Just for the aesthetics, I might as well include a "tree" view where you can see a graph, but that is not related to functionality. 
 
+## Phase 6 - Packaging as a Desktop App
+Work in progress. 
+
 ## Footnote
 I originally intended for this app to support several users, but it must undergo Google's verification process to allow users without having to explicitly add them to a list in the GCP console. I must also investigate if Microsoft requires a similar verification process too. I fully intend on preparing demo videos and submitting them for review in the future, but until then, you will have to contact me, so that I can add you to a list of test users.
 

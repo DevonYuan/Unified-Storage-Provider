@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database_driver import init_db, engine
-from routers import auth, storage
+from routers import auth, storage, omnidrive
 
 
 @asynccontextmanager
@@ -45,6 +45,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(storage.router)
+app.include_router(omnidrive.router)
 
 
 @app.get("/")

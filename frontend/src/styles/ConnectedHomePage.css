@@ -451,6 +451,21 @@
   text-align: center;
 }
 
+.connected-home-page__error-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.connected-home-page__retry-btn--ms {
+  background-color: #0078d4;
+}
+
+.connected-home-page__retry-btn--ms:hover {
+  background-color: #106ebe;
+}
+
 /* Empty state */
 .connected-home-page__empty {
   display: flex;

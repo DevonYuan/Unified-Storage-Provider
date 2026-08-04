@@ -32,12 +32,27 @@ function getCategoryIcon(category) {
 export function FileCard({
   file,
   viewMode = 'grid',
-  provider = 'google_drive',
+  providers = ['google'],
   onOpen,
 }) {
   const category = file.category
   const isFolder = file.is_folder
   const CategoryIcon = getCategoryIcon(category)
+
+  // Determine origin indicator class
+  const isMerged = providers.length > 1
+  const hasGoogle = providers.includes('google')
+  const hasOnedrive = providers.includes('onedrive')
+
+  let originClass = 'file-card__origin--google'
+  let originTitle = 'Google Drive'
+  if (isMerged) {
+    originClass = 'file-card__origin--merged'
+    originTitle = 'Google Drive + OneDrive (merged)'
+  } else if (hasOnedrive) {
+    originClass = 'file-card__origin--onedrive'
+    originTitle = 'OneDrive'
+  }
 
   const handleClick = (e) => {
     e.preventDefault()
@@ -57,8 +72,8 @@ export function FileCard({
     >
       {/* Origin indicator - top left */}
       <div
-        className={`file-card__origin ${provider === 'onedrive' ? 'file-card__origin--onedrive' : 'file-card__origin--google'}`}
-        title={provider === 'onedrive' ? 'OneDrive' : 'Google Drive'}
+        className={`file-card__origin ${originClass}`}
+        title={originTitle}
       />
 
       {/* Card content */}

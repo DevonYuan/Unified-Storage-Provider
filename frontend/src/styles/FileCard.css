@@ -9,3 +9,32 @@
 .file-card__content {
   overflow: hidden;
 }
+
+/* ── Origin indicator dots ─────────────────────────────────────────── */
+
+.file-card__origin {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 0 0 2px var(--surface, #fff);
+}
+
+.file-card__origin--google {
+  background-color: #34a853; /* Google green */
+}
+
+.file-card__origin--onedrive {
+  background-color: #0078d4; /* Microsoft blue */
+}
+
+.file-card__origin--merged {
+  /* Split indicator: half green, half blue */
+  background: conic-gradient(
+    #34a853 0deg 180deg,
+    #0078d4 180deg 360deg
+  );
+}

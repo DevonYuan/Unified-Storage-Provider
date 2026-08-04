@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { storageApi } from '../api/client.js'
+import { storageApi, omnidriveApi, authApi } from '../api/client.js'
 import {
   HardDrive,
   LogOut,
@@ -39,13 +39,25 @@ export function ConnectedHomePage() {
   const [accounts, setAccounts] = useState([])
   const [selectedAccountId, setSelectedAccountId] = useState(null)
 
-  // Folder navigation state
+  // OmniDrive unified view state
+  const [selectedView, setSelectedView] = useState('omnidrive') // 'omnidrive' or account_id number
+
+  // Folder navigation state (per-provider mode)
   const [currentFolderId, setCurrentFolderId] = useState('root')
   const [currentFolderName, setCurrentFolderName] = useState('All files')
   const [folderStack, setFolderStack] = useState([])
 
+  // Path navigation state (OmniDrive mode)
+  const [currentPath, setCurrentPath] = useState('/')
+  const [currentPathName, setCurrentPathName] = useState('All files')
+  const [pathStack, setPathStack] = useState([]) // [{path: '/Documents', name: 'Documents'}]
+
   // Get the currently selected account
   const selectedAccount = accounts.find(acc => acc.account_id === selectedAccountId)
+
+  // Current display name and stack for breadcrumbs (unified across both modes)
+  const displayName = selectedView === 'omnidrive' ? currentPathName : currentFolderName
+  const breadcrumbStack = selectedView === 'omnidrive' ? pathStack : folderStack
 
   // Filter and sort options - simplified to only what API supports
   const filterOptions = [
@@ -73,6 +85,10 @@ export function ConnectedHomePage() {
           setSelectedAccountId(accts[0].account_id)
         }
       }
+      // Default to OmniDrive view if we have accounts and no explicit selection yet
+      if (accts.length > 0 && selectedView === 'omnidrive') {
+        // Keep omnidrive as default
+      }
       return accts
     } catch (err) {
       console.error('Failed to load accounts:', err)
@@ -80,45 +96,73 @@ export function ConnectedHomePage() {
     }
   }
 
-  const fetchFiles = async (folderId = null) => {
-    const targetId = folderId ?? currentFolderId
-
+  const fetchFiles = async (targetPath = null, targetFolderId = null) => {
     setLoading(true)
     setError(null)
 
     try {
       // Refresh accounts list
       const accts = await loadAccounts()
-      const account = accts.find(acc => acc.account_id === selectedAccountId)
 
-      if (!account) {
-        setError('No storage account selected')
-        setLoading(false)
-        return
+      if (selectedView === 'omnidrive') {
+        // ── OmniDrive unified view ────────────────────────────
+        const path = targetPath ?? currentPath
+        const response = await omnidriveApi.listFiles(path)
+        const fileItems = response.items || []
+
+        // Surface per-provider errors from the merge response
+        if (response.errors && response.errors.length > 0) {
+          setError(response.errors.join('; '))
+        }
+
+        setFiles(fileItems.map(item => ({
+          id: item.virtual_id,
+          name: item.name,
+          mime_type: item.mime_type,
+          category: item.category,
+          size: item.size,
+          size_formatted: item.size_formatted,
+          modified_time: item.modified_time,
+          modified_time_formatted: item.modified_time_formatted,
+          thumbnail_link: item.thumbnail_link,
+          web_view_link: item.web_view_link,
+          is_folder: item.is_folder,
+          item_count: item.item_count,
+          providers: item.providers || [],
+        })))
+      } else {
+        // ── Per-provider view (existing logic) ────────────────
+        const targetId = targetFolderId ?? currentFolderId
+        const account = accts.find(acc => acc.account_id === selectedView)
+
+        if (!account) {
+          setError('No storage account selected')
+          setLoading(false)
+          return
+        }
+
+        const response = await storageApi.listFiles(account.account_id, targetId)
+        const fileItems = response.items || []
+
+        setFiles(fileItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          mime_type: item.mime_type,
+          category: item.category,
+          size: item.size,
+          size_formatted: item.size_formatted,
+          modified_time: item.modified_time,
+          modified_time_formatted: item.modified_time_formatted,
+          thumbnail_link: item.thumbnail_link,
+          web_view_link: item.web_view_link,
+          is_folder: item.is_folder,
+          item_count: item.item_count,
+          providers: [response.provider === 'google_drive' ? 'google' : 'onedrive'],
+        })))
       }
-
-      // Fetch files from backend API for the current folder
-      const response = await storageApi.listFiles(account.account_id, targetId)
-      const fileItems = response.items || []
-
-      // Transform API response to match FileCard expectations
-      setFiles(fileItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        mime_type: item.mime_type,
-        category: item.category,
-        size: item.size,
-        size_formatted: item.size_formatted,
-        modified_time: item.modified_time,
-        modified_time_formatted: item.modified_time_formatted,
-        thumbnail_link: item.thumbnail_link,
-        web_view_link: item.web_view_link,
-        is_folder: item.is_folder,
-        item_count: item.item_count,
-      })))
     } catch (err) {
       console.error('Failed to fetch files:', err)
-      setError('Failed to load files')
+      setError(err.message || 'Failed to load files')
     } finally {
       setLoading(false)
     }
@@ -135,16 +179,34 @@ export function ConnectedHomePage() {
     setUploadError(null)
 
     try {
-      if (!selectedAccountId) {
-        setUploadError('No storage account selected')
-        return
+      let uploadedFile
+
+      if (selectedView === 'omnidrive') {
+        uploadedFile = await omnidriveApi.uploadFile(file, currentPath)
+      } else {
+        if (!selectedAccountId) {
+          setUploadError('No storage account selected')
+          return
+        }
+        uploadedFile = await storageApi.uploadFile(selectedView, file, currentFolderId)
       }
 
-      // Upload file to backend API for the current folder
-      const uploadedFile = await storageApi.uploadFile(selectedAccountId, file, currentFolderId)
-
       // Add the uploaded file to the beginning of the list
-      setFiles(prev => [uploadedFile, ...prev])
+      setFiles(prev => [{
+        id: uploadedFile.virtual_id || uploadedFile.id,
+        name: uploadedFile.name,
+        mime_type: uploadedFile.mime_type,
+        category: uploadedFile.category,
+        size: uploadedFile.size,
+        size_formatted: uploadedFile.size_formatted,
+        modified_time: uploadedFile.modified_time,
+        modified_time_formatted: uploadedFile.modified_time_formatted,
+        thumbnail_link: uploadedFile.thumbnail_link,
+        web_view_link: uploadedFile.web_view_link,
+        is_folder: uploadedFile.is_folder,
+        item_count: uploadedFile.item_count,
+        providers: uploadedFile.providers || [],
+      }, ...prev])
 
       // Reset file input
       fileInput.value = ''
@@ -158,12 +220,35 @@ export function ConnectedHomePage() {
 
   const handleCreateFolder = async () => {
     const name = newFolderName.trim()
-    if (!name || !selectedAccountId) return
+    if (!name) return
+
+    if (selectedView !== 'omnidrive' && !selectedAccountId) return
 
     setCreatingFolder(true)
     try {
-      const newFolder = await storageApi.createFolder(selectedAccountId, name, currentFolderId)
-      setFiles(prev => [newFolder, ...prev])
+      let newFolder
+
+      if (selectedView === 'omnidrive') {
+        newFolder = await omnidriveApi.createFolder(name, currentPath)
+      } else {
+        newFolder = await storageApi.createFolder(selectedView, name, currentFolderId)
+      }
+
+      setFiles(prev => [{
+        id: newFolder.virtual_id || newFolder.id,
+        name: newFolder.name,
+        mime_type: newFolder.mime_type,
+        category: newFolder.category,
+        size: newFolder.size,
+        size_formatted: newFolder.size_formatted,
+        modified_time: newFolder.modified_time,
+        modified_time_formatted: newFolder.modified_time_formatted,
+        thumbnail_link: newFolder.thumbnail_link,
+        web_view_link: newFolder.web_view_link,
+        is_folder: newFolder.is_folder,
+        item_count: newFolder.item_count,
+        providers: newFolder.providers || [],
+      }, ...prev])
       setNewFolderName('')
       setShowNewFolderInput(false)
     } catch (err) {
@@ -176,36 +261,73 @@ export function ConnectedHomePage() {
 
   // Folder navigation handlers
   const navigateToFolder = (folderId, folderName) => {
-    setFolderStack(prev => [...prev, { id: folderId, name: folderName }])
-    setCurrentFolderId(folderId)
-    setCurrentFolderName(folderName)
+    if (selectedView === 'omnidrive') {
+      // Path-based navigation
+      const newPath = currentPath === '/' ? `/${folderName}` : `${currentPath}/${folderName}`
+      setPathStack(prev => [...prev, { path: newPath, name: folderName }])
+      setCurrentPath(newPath)
+      setCurrentPathName(folderName)
+    } else {
+      // ID-based navigation (existing)
+      setFolderStack(prev => [...prev, { id: folderId, name: folderName }])
+      setCurrentFolderId(folderId)
+      setCurrentFolderName(folderName)
+    }
   }
 
   const goBack = () => {
-    const newStack = folderStack.slice(0, -1)
-    const parent = newStack[newStack.length - 1]
-    if (parent) {
-      setCurrentFolderId(parent.id)
-      setCurrentFolderName(parent.name)
+    if (selectedView === 'omnidrive') {
+      const newStack = pathStack.slice(0, -1)
+      const parent = newStack[newStack.length - 1]
+      if (parent) {
+        setCurrentPath(parent.path)
+        setCurrentPathName(parent.name)
+      } else {
+        setCurrentPath('/')
+        setCurrentPathName('All files')
+      }
+      setPathStack(newStack)
     } else {
-      setCurrentFolderId('root')
-      setCurrentFolderName('All files')
+      const newStack = folderStack.slice(0, -1)
+      const parent = newStack[newStack.length - 1]
+      if (parent) {
+        setCurrentFolderId(parent.id)
+        setCurrentFolderName(parent.name)
+      } else {
+        setCurrentFolderId('root')
+        setCurrentFolderName('All files')
+      }
+      setFolderStack(newStack)
     }
-    setFolderStack(newStack)
   }
 
   const navigateToRoot = () => {
-    setCurrentFolderId('root')
-    setCurrentFolderName('All files')
-    setFolderStack([])
+    if (selectedView === 'omnidrive') {
+      setCurrentPath('/')
+      setCurrentPathName('All files')
+      setPathStack([])
+    } else {
+      setCurrentFolderId('root')
+      setCurrentFolderName('All files')
+      setFolderStack([])
+    }
   }
 
   const navigateToBreadcrumb = (index) => {
-    const target = folderStack[index]
-    if (target) {
-      setCurrentFolderId(target.id)
-      setCurrentFolderName(target.name)
-      setFolderStack(folderStack.slice(0, index + 1))
+    if (selectedView === 'omnidrive') {
+      const target = pathStack[index]
+      if (target) {
+        setCurrentPath(target.path)
+        setCurrentPathName(target.name)
+        setPathStack(pathStack.slice(0, index + 1))
+      }
+    } else {
+      const target = folderStack[index]
+      if (target) {
+        setCurrentFolderId(target.id)
+        setCurrentFolderName(target.name)
+        setFolderStack(folderStack.slice(0, index + 1))
+      }
     }
   }
 
@@ -217,15 +339,54 @@ export function ConnectedHomePage() {
     }
   }
 
+  // ── One-click OAuth reconnect ──────────────────────────────────────
+
+  const [reconnecting, setReconnecting] = useState(null) // 'google' | 'microsoft' | null
+
+  const handleReconnect = async (provider) => {
+    setReconnecting(provider)
+    try {
+      const redirectUri = provider === 'google'
+        ? 'http://localhost:8000/auth/google/callback'
+        : 'http://localhost:8000/auth/microsoft/callback'
+
+      const { auth_url, state } = provider === 'google'
+        ? await authApi.startGoogleOAuth(redirectUri)
+        : await authApi.startMicrosoftOAuth(redirectUri)
+
+      sessionStorage.setItem(provider === 'google' ? 'oauth_state' : 'oauth_state_ms', state)
+      window.location.href = auth_url
+    } catch (err) {
+      setReconnecting(null)
+      setError(`Failed to start ${provider === 'google' ? 'Google' : 'Microsoft'} reconnection: ${err.message}`)
+    }
+  }
+
+  // Detect which provider an error is about
+  const failedProvider = (() => {
+    if (!error) return null
+    const msg = error.toLowerCase()
+    // Explicit provider mentions in the error
+    if (msg.includes('google') || msg.includes('drive')) return 'google'
+    if (msg.includes('microsoft') || msg.includes('onedrive') || msg.includes('graph')) return 'microsoft'
+    // If viewing a specific provider account, that's the one that failed
+    if (selectedView !== 'omnidrive' && selectedAccount) {
+      return selectedAccount.provider === 'google_drive' ? 'google' : 'microsoft'
+    }
+    return null
+  })()
+
   useEffect(() => {
     loadAccounts()
   }, [])
 
   useEffect(() => {
-    if (selectedAccountId) {
-      fetchFiles(currentFolderId)
+    if (selectedView === 'omnidrive') {
+      fetchFiles(currentPath)
+    } else if (selectedView) {
+      fetchFiles(null, currentFolderId)
     }
-  }, [selectedAccountId, currentFolderId])
+  }, [selectedView, currentPath, currentFolderId])
 
   useEffect(() => {
     checkGoogleConnection()
@@ -297,17 +458,17 @@ export function ConnectedHomePage() {
           {/* Title and item count */}
           <div className="connected-home-page__title-section">
             <div className="connected-home-page__title-row">
-              {folderStack.length > 0 && (
+              {breadcrumbStack.length > 0 && (
                 <button
                   onClick={goBack}
                   className="connected-home-page__back-btn"
                   aria-label="Go back to parent folder"
-                  title={`Back to ${folderStack.length > 1 ? folderStack[folderStack.length - 2].name : 'All files'}`}
+                  title={`Back to ${breadcrumbStack.length > 1 ? breadcrumbStack[breadcrumbStack.length - 2].name : 'All files'}`}
                 >
                   <ChevronLeft size={20} />
                 </button>
               )}
-              <h1 className="connected-home-page__title">{currentFolderName}</h1>
+              <h1 className="connected-home-page__title">{displayName}</h1>
             </div>
             <p className="connected-home-page__subtitle">
               {itemCount} item{itemCount !== 1 ? 's' : ''} · sorted by {sortBy === 'recent' ? 'recent' : sortBy === 'name' ? 'name' : 'size'}
@@ -317,19 +478,28 @@ export function ConnectedHomePage() {
           {/* Controls */}
           <div className="connected-home-page__controls">
             {/* Provider selector */}
-            {accounts.length > 1 && (
+            {accounts.length > 0 && (
               <div className="connected-home-page__dropdown">
                 <select
-                  value={selectedAccountId || ''}
+                  value={selectedView}
                   onChange={(e) => {
-                    setSelectedAccountId(Number(e.target.value))
-                    navigateToRoot()
+                    const val = e.target.value
+                    if (val === 'omnidrive') {
+                      setSelectedView('omnidrive')
+                      navigateToRoot()
+                    } else {
+                      const numVal = Number(val)
+                      setSelectedView(numVal)
+                      setSelectedAccountId(numVal)
+                      navigateToRoot()
+                    }
                   }}
                   className="connected-home-page__provider-select"
                 >
+                  <option value="omnidrive">🌐 OmniDrive (Unified)</option>
                   {accounts.map(acc => (
                     <option key={acc.account_id} value={acc.account_id}>
-                      {acc.provider === 'google_drive' ? 'Google Drive' : 'OneDrive'} · {acc.display_name}
+                      {acc.provider === 'google_drive' ? '🟢 Google Drive' : '🔵 OneDrive'} · {acc.display_name}
                     </option>
                   ))}
                 </select>
@@ -444,7 +614,7 @@ export function ConnectedHomePage() {
                 <button
                   onClick={() => setShowNewFolderInput(true)}
                   className="connected-home-page__upload-btn"
-                  disabled={!selectedAccountId}
+                  disabled={!selectedAccountId && selectedView !== 'omnidrive'}
                 >
                   <FolderPlus className="connected-home-page__upload-icon" size={16} />
                   New Folder
@@ -474,7 +644,7 @@ export function ConnectedHomePage() {
         {/* File Grid */}
         <div className="connected-home-page__content">
           {/* Breadcrumb trail */}
-          {folderStack.length > 0 && (
+          {breadcrumbStack.length > 0 && (
             <div className="connected-home-page__breadcrumb">
               <button
                 onClick={() => navigateToRoot()}
@@ -482,14 +652,14 @@ export function ConnectedHomePage() {
               >
                 All files
               </button>
-              {folderStack.map((folder, i) => (
-                <span key={folder.id} className="connected-home-page__breadcrumb-segment">
+              {breadcrumbStack.map((crumb, i) => (
+                <span key={crumb.id || crumb.path} className="connected-home-page__breadcrumb-segment">
                   <ChevronRight size={12} className="connected-home-page__breadcrumb-sep" />
                   <button
                     onClick={() => navigateToBreadcrumb(i)}
-                    className={`connected-home-page__breadcrumb-item ${i === folderStack.length - 1 ? 'connected-home-page__breadcrumb-item--active' : ''}`}
+                    className={`connected-home-page__breadcrumb-item ${i === breadcrumbStack.length - 1 ? 'connected-home-page__breadcrumb-item--active' : ''}`}
                   >
-                    {folder.name}
+                    {crumb.name}
                   </button>
                 </span>
               ))}
@@ -504,14 +674,31 @@ export function ConnectedHomePage() {
             <div className="connected-home-page__error">
               <Folder className="connected-home-page__error-icon" size={48} />
               <p>{error}</p>
-              {error.toLowerCase().includes('refresh') || error.toLowerCase().includes('token') ? (
+              {(error.toLowerCase().includes('refresh') || error.toLowerCase().includes('token') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('auth')) ? (
                 <div className="connected-home-page__error-actions">
                   <p className="connected-home-page__error-hint">
-                    Your Google session may have expired. Reconnect to restore access.
+                    Your session may have expired. Click below to re-authenticate.
                   </p>
-                  <button onClick={() => window.location.href = '/signup'} className="connected-home-page__retry-btn">
-                    Reconnect Google Drive
-                  </button>
+                  <div className="connected-home-page__error-buttons">
+                    {(!failedProvider || failedProvider === 'google') && (
+                      <button
+                        onClick={() => handleReconnect('google')}
+                        disabled={reconnecting !== null}
+                        className="connected-home-page__retry-btn"
+                      >
+                        {reconnecting === 'google' ? 'Connecting...' : 'Reconnect Google Drive'}
+                      </button>
+                    )}
+                    {(!failedProvider || failedProvider === 'microsoft') && (
+                      <button
+                        onClick={() => handleReconnect('microsoft')}
+                        disabled={reconnecting !== null}
+                        className="connected-home-page__retry-btn connected-home-page__retry-btn--ms"
+                      >
+                        {reconnecting === 'microsoft' ? 'Connecting...' : 'Reconnect OneDrive'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <button onClick={fetchFiles} className="connected-home-page__retry-btn">Retry</button>
@@ -534,7 +721,7 @@ export function ConnectedHomePage() {
                   key={file.id}
                   file={file}
                   viewMode={viewMode}
-                  provider={selectedAccount?.provider}
+                  providers={file.providers || (selectedAccount?.provider === 'google_drive' ? ['google'] : ['onedrive'])}
                   onOpen={handleOpenFile}
                 />
               ))}

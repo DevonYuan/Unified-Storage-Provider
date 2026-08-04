@@ -134,7 +134,64 @@ export const storageApi = {
   },
 };
 
+export const omnidriveApi = {
+  async listFiles(path = '/', pageSize = 100, pageToken = null) {
+    let url = `/omnidrive/files?path=${encodeURIComponent(path)}&page_size=${pageSize}`;
+    if (pageToken) {
+      url += `&page_token=${encodeURIComponent(pageToken)}`;
+    }
+    return request(url);
+  },
+
+  async uploadFile(file, parentPath = '/') {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const url = `${API_BASE}/omnidrive/files/upload?parent_path=${encodeURIComponent(parentPath)}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Request failed' }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async createFolder(name, parentPath = '/') {
+    return request('/omnidrive/folders', {
+      method: 'POST',
+      body: { name, parent_path: parentPath },
+    });
+  },
+
+  async renameItem(virtualId, name) {
+    return request(`/omnidrive/files/${encodeURIComponent(virtualId)}`, {
+      method: 'PATCH',
+      body: { name },
+    });
+  },
+
+  async deleteItem(virtualId) {
+    return request(`/omnidrive/files/${encodeURIComponent(virtualId)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async refreshTree() {
+    return request('/omnidrive/refresh', {
+      method: 'POST',
+    });
+  },
+};
+
 export default {
   auth: authApi,
   storage: storageApi,
+  omnidrive: omnidriveApi,
 };
