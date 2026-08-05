@@ -39,6 +39,9 @@ export function ConnectedHomePage() {
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null) // { x, y, file } or null
 
+  // Clipboard state for cut/copy/paste
+  const [clipboard, setClipboard] = useState(null) // { action: 'cut'|'copy', files: [...], sourceView, sourcePath } or null
+
   // Connected accounts state
   const [accounts, setAccounts] = useState([])
   const [selectedAccountId, setSelectedAccountId] = useState(null)
@@ -440,6 +443,69 @@ export function ConnectedHomePage() {
     document.body.removeChild(a)
   }
 
+  // ── Cut / Copy / Paste ─────────────────────────────────────────────
+
+  const handleCut = (file) => {
+    setClipboard({
+      action: 'cut',
+      files: [file],
+      sourceView: selectedView,
+      sourcePath: selectedView === 'omnidrive' ? currentPath : currentFolderId,
+    })
+  }
+
+  const handleCopy = (file) => {
+    setClipboard({
+      action: 'copy',
+      files: [file],
+      sourceView: selectedView,
+      sourcePath: selectedView === 'omnidrive' ? currentPath : currentFolderId,
+    })
+  }
+
+  const handlePaste = async () => {
+    if (!clipboard || clipboard.files.length === 0) return
+
+    const destPath = selectedView === 'omnidrive' ? currentPath : currentFolderId
+
+    // Don't paste to the same location — silently ignore
+    if (clipboard.sourceView === selectedView && clipboard.sourcePath === destPath) {
+      return
+    }
+
+    setError(null)
+    const file = clipboard.files[0]
+    try {
+      if (clipboard.action === 'cut') {
+        if (selectedView === 'omnidrive') {
+          await omnidriveApi.moveItem(file.id, currentPath)
+        } else {
+          await storageApi.moveFile(selectedView, file.id, currentFolderId)
+        }
+      } else {
+        if (selectedView === 'omnidrive') {
+          await omnidriveApi.copyItem(file.id, currentPath)
+        } else {
+          await storageApi.copyFile(selectedView, file.id, currentFolderId)
+        }
+      }
+      if (clipboard.action === 'cut') {
+        setClipboard(null)
+      }
+      fetchFiles()
+    } catch (err) {
+      setError(`Failed to ${clipboard.action === 'cut' ? 'move' : 'copy'}: ${err.message}`)
+    }
+  }
+
+  // Empty-area right-click — shows paste-only menu when clipboard has content
+  const handleGridContextMenu = (e) => {
+    if (!clipboard || clipboard.files.length === 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, file: null })
+  }
+
   useEffect(() => {
     loadAccounts()
   }, [])
@@ -484,6 +550,13 @@ export function ConnectedHomePage() {
   const itemCount = sortedFiles.length
   const folderCount = sortedFiles.filter(f => f.is_folder).length
   const fileCount = itemCount - folderCount
+
+  const isAuthError = error && (
+    error.toLowerCase().includes('refresh') ||
+    error.toLowerCase().includes('token') ||
+    error.toLowerCase().includes('expired') ||
+    error.toLowerCase().includes('auth')
+  )
 
   return (
     <div className="connected-home-page">
@@ -706,7 +779,7 @@ export function ConnectedHomePage() {
         </div>
 
         {/* File Grid */}
-        <div className="connected-home-page__content">
+        <div className="connected-home-page__content" onContextMenu={handleGridContextMenu}>
           {/* Breadcrumb trail */}
           {breadcrumbStack.length > 0 && (
             <div className="connected-home-page__breadcrumb">
@@ -729,68 +802,75 @@ export function ConnectedHomePage() {
               ))}
             </div>
           )}
-          {loading ? (
-            <div className="connected-home-page__loading">
-              <Loader2 className="connected-home-page__loader" size={24} />
-              <span>Loading files...</span>
-            </div>
-          ) : error ? (
+          {error && isAuthError ? (
             <div className="connected-home-page__error">
               <Folder className="connected-home-page__error-icon" size={48} />
               <p>{error}</p>
-              {(error.toLowerCase().includes('refresh') || error.toLowerCase().includes('token') || error.toLowerCase().includes('expired') || error.toLowerCase().includes('auth')) ? (
-                <div className="connected-home-page__error-actions">
-                  <p className="connected-home-page__error-hint">
-                    Your session may have expired. Click below to re-authenticate.
-                  </p>
-                  <div className="connected-home-page__error-buttons">
-                    {(!failedProvider || failedProvider === 'google') && (
-                      <button
-                        onClick={() => handleReconnect('google')}
-                        disabled={reconnecting !== null}
-                        className="connected-home-page__retry-btn"
-                      >
-                        {reconnecting === 'google' ? 'Connecting...' : 'Reconnect Google Drive'}
-                      </button>
-                    )}
-                    {(!failedProvider || failedProvider === 'microsoft') && (
-                      <button
-                        onClick={() => handleReconnect('microsoft')}
-                        disabled={reconnecting !== null}
-                        className="connected-home-page__retry-btn connected-home-page__retry-btn--ms"
-                      >
-                        {reconnecting === 'microsoft' ? 'Connecting...' : 'Reconnect OneDrive'}
-                      </button>
-                    )}
-                  </div>
+              <div className="connected-home-page__error-actions">
+                <p className="connected-home-page__error-hint">
+                  Your session may have expired. Click below to re-authenticate.
+                </p>
+                <div className="connected-home-page__error-buttons">
+                  {(!failedProvider || failedProvider === 'google') && (
+                    <button
+                      onClick={() => handleReconnect('google')}
+                      disabled={reconnecting !== null}
+                      className="connected-home-page__retry-btn"
+                    >
+                      {reconnecting === 'google' ? 'Connecting...' : 'Reconnect Google Drive'}
+                    </button>
+                  )}
+                  {(!failedProvider || failedProvider === 'microsoft') && (
+                    <button
+                      onClick={() => handleReconnect('microsoft')}
+                      disabled={reconnecting !== null}
+                      className="connected-home-page__retry-btn connected-home-page__retry-btn--ms"
+                    >
+                      {reconnecting === 'microsoft' ? 'Connecting...' : 'Reconnect OneDrive'}
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <button onClick={fetchFiles} className="connected-home-page__retry-btn">Retry</button>
-              )}
-            </div>
-          ) : sortedFiles.length === 0 ? (
-            <div className="connected-home-page__empty">
-              <Folder className="connected-home-page__empty-icon" size={64} />
-              <h2>No files found</h2>
-              <p>{accounts.length === 0 ? 'Connect a storage provider to see your files' : 'This folder is empty'}</p>
+              </div>
             </div>
           ) : (
-            <div
-              className={`connected-home-page__grid ${viewMode === 'list' ? 'connected-home-page__grid--list' : ''}`}
-              role="list"
-              aria-label="Files and folders"
-            >
-              {sortedFiles.map(file => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  viewMode={viewMode}
-                  providers={file.providers || (selectedAccount?.provider === 'google_drive' ? ['google'] : ['onedrive'])}
-                  onOpen={handleOpenFile}
-                  onContextMenu={handleContextMenu}
-                />
-              ))}
-            </div>
+            <>
+              {/* Non-auth error banner */}
+              {error && !isAuthError && (
+                <div className="connected-home-page__error-banner">
+                  <span>{error}</span>
+                  <button onClick={() => setError(null)} className="connected-home-page__error-dismiss" aria-label="Dismiss">×</button>
+                </div>
+              )}
+              {loading ? (
+                <div className="connected-home-page__loading">
+                  <Loader2 className="connected-home-page__loader" size={24} />
+                  <span>Loading files...</span>
+                </div>
+              ) : sortedFiles.length === 0 ? (
+                <div className="connected-home-page__empty">
+                  <Folder className="connected-home-page__empty-icon" size={64} />
+                  <h2>No files found</h2>
+                  <p>{accounts.length === 0 ? 'Connect a storage provider to see your files' : 'This folder is empty'}</p>
+                </div>
+              ) : (
+                <div
+                  className={`connected-home-page__grid ${viewMode === 'list' ? 'connected-home-page__grid--list' : ''}`}
+                  role="list"
+                  aria-label="Files and folders"
+                >
+                  {sortedFiles.map(file => (
+                    <FileCard
+                      key={file.id}
+                      file={file}
+                      viewMode={viewMode}
+                      providers={file.providers || (selectedAccount?.provider === 'google_drive' ? ['google'] : ['onedrive'])}
+                      onOpen={handleOpenFile}
+                      onContextMenu={handleContextMenu}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -799,7 +879,11 @@ export function ConnectedHomePage() {
           x={contextMenu.x}
           y={contextMenu.y}
           file={contextMenu.file}
+          clipboardCount={clipboard ? clipboard.files.length : 0}
           onClose={closeContextMenu}
+          onCut={handleCut}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
           onRename={handleRename}
           onDelete={handleDelete}
           onDownload={handleDownload}

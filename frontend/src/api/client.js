@@ -149,6 +149,18 @@ export const storageApi = {
   getDownloadUrl(accountId, fileId) {
     return `${API_BASE}/storage/${accountId}/files/${encodeURIComponent(fileId)}/download`;
   },
+
+  async moveFile(accountId, fileId, newParentId = 'root') {
+    return request(`/storage/${accountId}/files/${encodeURIComponent(fileId)}/move?new_parent_id=${encodeURIComponent(newParentId)}`, {
+      method: 'POST',
+    });
+  },
+
+  async copyFile(accountId, fileId, newParentId = 'root') {
+    return request(`/storage/${accountId}/files/${encodeURIComponent(fileId)}/copy?new_parent_id=${encodeURIComponent(newParentId)}`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const omnidriveApi = {
@@ -208,6 +220,18 @@ export const omnidriveApi = {
 
   getDownloadUrl(virtualId) {
     return `${API_BASE}/omnidrive/files/${encodeURIComponent(virtualId)}/download`;
+  },
+
+  async moveItem(virtualId, newParentPath = '/') {
+    return request(`/omnidrive/files/${encodeURIComponent(virtualId)}/move?new_parent_path=${encodeURIComponent(newParentPath)}`, {
+      method: 'POST',
+    });
+  },
+
+  async copyItem(virtualId, newParentPath = '/') {
+    return request(`/omnidrive/files/${encodeURIComponent(virtualId)}/copy?new_parent_path=${encodeURIComponent(newParentPath)}`, {
+      method: 'POST',
+    });
   },
 };
 

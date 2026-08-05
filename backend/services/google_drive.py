@@ -471,3 +471,95 @@ async def download_drive_file(
             raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
 
         return response.content, filename, mime_type
+
+
+async def move_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+    new_parent_id: str,
+) -> Dict[str, Any]:
+    """Move a file or folder to a different parent folder in Google Drive."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Get current parents first
+        meta = await get_file_metadata(account, db, file_id)
+        old_parents = meta.get("parents", [])
+
+        params = {}
+        if old_parents:
+            params["removeParents"] = ",".join(old_parents)
+        if new_parent_id and new_parent_id != "root":
+            params["addParents"] = new_parent_id
+
+        response = await client.patch(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params=params,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.patch(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        params=params,
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive move error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        return response.json()
+
+
+async def copy_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+    new_parent_id: str,
+) -> Dict[str, Any]:
+    """Copy a file to a different folder in Google Drive."""
+    access_token = await get_valid_access_token(account, db)
+
+    body = {}
+    if new_parent_id and new_parent_id != "root":
+        body["parents"] = [new_parent_id]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}/copy",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.post(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}/copy",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json=body,
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            error_data = response.json()
+            raise GoogleDriveError(f"Google Drive copy error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+
+        return response.json()

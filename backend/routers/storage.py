@@ -418,3 +418,59 @@ async def download_file(
         media_type=mime_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/{account_id}/files/{file_id}/move")
+async def move_file(
+    account_id: int,
+    file_id: str,
+    new_parent_id: str = "root",
+    db: Session = Depends(get_db),
+):
+    """Move a file or folder to a different parent folder."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import move_drive_file
+            result = await move_drive_file(account, db, file_id, new_parent_id)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import move_drive_file as move_ms_file
+            result = await move_ms_file(account, db, file_id, new_parent_id)
+        else:
+            raise HTTPException(status_code=400, detail=f"Move not supported for {account.provider.value}")
+        return result
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{account_id}/files/{file_id}/copy")
+async def copy_file(
+    account_id: int,
+    file_id: str,
+    new_parent_id: str = "root",
+    db: Session = Depends(get_db),
+):
+    """Copy a file to a different parent folder."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import copy_drive_file
+            result = await copy_drive_file(account, db, file_id, new_parent_id)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import copy_drive_file as copy_ms_file
+            result = await copy_ms_file(account, db, file_id, new_parent_id)
+        else:
+            raise HTTPException(status_code=400, detail=f"Copy not supported for {account.provider.value}")
+        return result
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))

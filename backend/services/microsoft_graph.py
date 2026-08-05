@@ -376,3 +376,165 @@ async def download_drive_file(
             )
 
         return response.content, filename, mime_type
+
+
+async def move_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+    new_parent_id: str,
+) -> Dict[str, Any]:
+    """Move a file or folder to a different parent folder in OneDrive."""
+    access_token = await get_valid_access_token(account, db)
+
+    body = {}
+    if new_parent_id and new_parent_id != "root":
+        body["parentReference"] = {"id": new_parent_id}
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.patch(
+            f"{GRAPH_BASE}/me/drive/items/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.patch(
+                        f"{GRAPH_BASE}/me/drive/items/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json=body,
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code not in (200, 201):
+            error_data = response.json()
+            raise MicrosoftGraphError(
+                f"Microsoft Graph move error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+            )
+
+        return _ms_item_to_fileitem(response.json())
+
+
+async def copy_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+    new_parent_id: str,
+) -> Dict[str, Any]:
+    """Copy a file or folder to a different folder in OneDrive.
+
+    Uses Microsoft Graph's async copy endpoint. For folders or large files
+    this returns 202 Accepted — we poll the monitor URL until completion.
+    """
+    access_token = await get_valid_access_token(account, db)
+
+    # Fetch the original item's name so we can generate a conflict-free copy name
+    meta = await get_file_metadata(account, db, file_id)
+    original_name = meta.get("name", "copy")
+
+    # Generate a copy name: "file.txt" → "file - Copy.txt"
+    dot_idx = original_name.rfind(".")
+    if dot_idx > 0:
+        copy_name = f"{original_name[:dot_idx]} - Copy{original_name[dot_idx:]}"
+    else:
+        copy_name = f"{original_name} - Copy"
+
+    # Always include parentReference — empty body causes a 500 from Microsoft.
+    body: Dict[str, Any] = {
+        "parentReference": {"id": new_parent_id} if new_parent_id and new_parent_id != "root" else {"path": "/drive/root:"},
+        "name": copy_name,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{GRAPH_BASE}/me/drive/items/{file_id}/copy",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Prefer": "respond-async",
+            },
+            json=body,
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.post(
+                        f"{GRAPH_BASE}/me/drive/items/{file_id}/copy",
+                        headers={
+                            "Authorization": f"Bearer {token_response['access_token']}",
+                            "Prefer": "respond-async",
+                        },
+                        json=body,
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code == 202:
+            # Async copy — poll the monitor URL
+            monitor_url = response.headers.get("Location")
+            if monitor_url:
+                import asyncio
+                poll_token = access_token
+                for _ in range(60):  # poll up to 60 seconds for large folders
+                    await asyncio.sleep(1)
+                    poll = await client.get(
+                        monitor_url,
+                        headers={"Authorization": f"Bearer {poll_token}"},
+                    )
+                    if poll.status_code in (200, 201):
+                        return _ms_item_to_fileitem(poll.json())
+                    elif poll.status_code == 401:
+                        # Token expired during polling — refresh and retry
+                        if account.refresh_token:
+                            try:
+                                token_response = await refresh_access_token(account.refresh_token)
+                                poll_token = token_response["access_token"]
+                                account.access_token = poll_token
+                                db.commit()
+                                # Retry immediately with new token
+                                poll = await client.get(
+                                    monitor_url,
+                                    headers={"Authorization": f"Bearer {poll_token}"},
+                                )
+                                if poll.status_code in (200, 201):
+                                    return _ms_item_to_fileitem(poll.json())
+                                elif poll.status_code >= 400:
+                                    error_data = poll.json()
+                                    raise MicrosoftGraphError(
+                                        f"Copy failed during polling: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                                    )
+                            except Exception as e:
+                                raise MicrosoftGraphError(f"Token refresh failed during copy: {e}")
+                        else:
+                            raise MicrosoftGraphError("Access token expired during copy and no refresh token available")
+                    elif poll.status_code >= 400:
+                        error_data = poll.json()
+                        raise MicrosoftGraphError(
+                            f"Copy failed during polling: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                        )
+                raise MicrosoftGraphError("Copy operation timed out after 60 seconds")
+            raise MicrosoftGraphError("No monitor URL returned for async copy")
+
+        if response.status_code in (200, 201):
+            return _ms_item_to_fileitem(response.json())
+
+        # Try to extract a useful error message
+        try:
+            error_data = response.json()
+            msg = error_data.get("error", {}).get("message", "Unknown error")
+        except Exception:
+            msg = f"HTTP {response.status_code}"
+        raise MicrosoftGraphError(f"Microsoft Graph copy error: {msg}")

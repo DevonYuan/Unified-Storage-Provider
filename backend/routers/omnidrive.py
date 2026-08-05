@@ -221,6 +221,110 @@ async def download_file(
     )
 
 
+@router.post("/files/{virtual_id}/move")
+async def move_file(
+    virtual_id: str,
+    new_parent_path: str = "/",
+    db: Session = Depends(get_db),
+):
+    """Move a file or folder within the unified view (same provider only)."""
+    provider, real_id = parse_virtual_id(virtual_id)
+    google_account, ms_account = get_provider_accounts(db)
+
+    if provider == "merged":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot move a merged folder directly")
+
+    account = google_account if provider == "google" else ms_account
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No {provider} account connected")
+
+    # Resolve destination path to a real parent ID on the same provider
+    dest_parent_id = "root"
+    if new_parent_path != "/":
+        # Try path_mapping for merged folders, or find the folder in the cache
+        from services.omnidrive_tree import _path_mapping, _listing_cache
+        if new_parent_path in _path_mapping:
+            for pstr, rid in _path_mapping[new_parent_path]:
+                if pstr == provider:
+                    dest_parent_id = rid
+                    break
+        else:
+            # Look through parent listing
+            parent_path = "/" if "/" not in new_parent_path.rstrip("/") else new_parent_path.rsplit("/", 1)[0]
+            folder_name = new_parent_path.rstrip("/").rsplit("/", 1)[-1]
+            parent_items = _listing_cache.get(parent_path or "/", [])
+            for item in parent_items:
+                if item["name"] == folder_name and item["is_folder"]:
+                    vid = item.get("virtual_id", "")
+                    if vid.startswith(f"{provider}:"):
+                        dest_parent_id = vid.split(":", 1)[1]
+                    break
+
+    try:
+        if account.provider.value == "google_drive":
+            from services.google_drive import move_drive_file
+            result = await move_drive_file(account, db, real_id, dest_parent_id)
+        else:
+            from services.microsoft_graph import move_drive_file as move_ms_file
+            result = await move_ms_file(account, db, real_id, dest_parent_id)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    invalidate_cache()
+    return result
+
+
+@router.post("/files/{virtual_id}/copy")
+async def copy_file(
+    virtual_id: str,
+    new_parent_path: str = "/",
+    db: Session = Depends(get_db),
+):
+    """Copy a file within the unified view (same provider only)."""
+    provider, real_id = parse_virtual_id(virtual_id)
+    google_account, ms_account = get_provider_accounts(db)
+
+    if provider == "merged":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot copy a merged folder directly")
+
+    account = google_account if provider == "google" else ms_account
+    if not account:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No {provider} account connected")
+
+    # Resolve destination path (same logic as move)
+    dest_parent_id = "root"
+    if new_parent_path != "/":
+        from services.omnidrive_tree import _path_mapping, _listing_cache
+        if new_parent_path in _path_mapping:
+            for pstr, rid in _path_mapping[new_parent_path]:
+                if pstr == provider:
+                    dest_parent_id = rid
+                    break
+        else:
+            parent_path = "/" if "/" not in new_parent_path.rstrip("/") else new_parent_path.rsplit("/", 1)[0]
+            folder_name = new_parent_path.rstrip("/").rsplit("/", 1)[-1]
+            parent_items = _listing_cache.get(parent_path or "/", [])
+            for item in parent_items:
+                if item["name"] == folder_name and item["is_folder"]:
+                    vid = item.get("virtual_id", "")
+                    if vid.startswith(f"{provider}:"):
+                        dest_parent_id = vid.split(":", 1)[1]
+                    break
+
+    try:
+        if account.provider.value == "google_drive":
+            from services.google_drive import copy_drive_file
+            result = await copy_drive_file(account, db, real_id, dest_parent_id)
+        else:
+            from services.microsoft_graph import copy_drive_file as copy_ms_file
+            result = await copy_ms_file(account, db, real_id, dest_parent_id)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    invalidate_cache()
+    return result
+
+
 # ── Maintenance ──────────────────────────────────────────────────────────────
 
 @router.post("/refresh")
