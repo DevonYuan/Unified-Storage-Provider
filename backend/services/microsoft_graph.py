@@ -610,3 +610,145 @@ async def copy_drive_file(
         except Exception:
             msg = f"HTTP {response.status_code}"
         raise MicrosoftGraphError(f"Microsoft Graph copy error: {msg}")
+
+
+async def get_storage_quota(
+    account: "ConnectedAccount",
+    db: Session,
+) -> Dict[str, Any]:
+    """Get storage quota information from OneDrive.
+
+    Returns dict with total_space, used_space, available_space (all in bytes).
+    """
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{GRAPH_BASE}/me/drive",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"$select": "quota"},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.get(
+                        f"{GRAPH_BASE}/me/drive",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        params={"$select": "quota"},
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise MicrosoftGraphError(f"Microsoft Graph API error: {error_msg}")
+
+        try:
+            data = response.json()
+        except Exception:
+            raise MicrosoftGraphError("Failed to parse quota response")
+
+        quota = data.get("quota", {})
+        return {
+            "total_space": quota.get("total"),
+            "used_space": quota.get("used"),
+            "available_space": quota.get("remaining"),
+        }
+
+
+async def list_trash_files(
+    account: "ConnectedAccount",
+    db: Session,
+) -> List[Dict[str, Any]]:
+    """List files in OneDrive recycle bin."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{GRAPH_BASE}/me/drive/recycleBin",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"$top": 100, "$orderby": "deletedDateTime desc"},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.get(
+                        f"{GRAPH_BASE}/me/drive/recycleBin",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        params={"$top": 100, "$orderby": "deletedDateTime desc"},
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise MicrosoftGraphError(f"Microsoft Graph API error: {error_msg}")
+
+        try:
+            data = response.json()
+        except Exception:
+            raise MicrosoftGraphError("Failed to parse trash response")
+
+        return [_ms_item_to_fileitem(item) for item in data.get("value", [])]
+
+
+async def restore_from_trash(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+) -> Dict[str, Any]:
+    """Restore a file from OneDrive recycle bin."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.patch(
+            f"{GRAPH_BASE}/me/drive/recycleBin/items/{file_id}/restore",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.patch(
+                        f"{GRAPH_BASE}/me/drive/recycleBin/items/{file_id}/restore",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json={},
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
+        if response.status_code not in (200, 201, 204):
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise MicrosoftGraphError(f"Microsoft Graph API error: {error_msg}")
+
+        return _ms_item_to_fileitem(response.json()) if response.status_code in (200, 201) else {"status": "restored"}

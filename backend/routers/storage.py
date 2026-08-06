@@ -178,6 +178,155 @@ def list_storage_accounts(db: Session = Depends(get_db)):
     )
 
 
+class QuotaResponse(BaseModel):
+    """Storage quota information."""
+    account_id: int
+    provider: ProviderType
+    total_space: Optional[int] = None
+    used_space: Optional[int] = None
+    available_space: Optional[int] = None
+
+
+@router.get("/quota/summary")
+async def get_quota_summary(db: Session = Depends(get_db)):
+    """Get combined storage quota across all providers."""
+    accounts = db.query(ConnectedAccount).all()
+    quotas = []
+    total_used = 0
+    total_space = 0
+
+    for acc in accounts:
+        try:
+            if acc.provider == ProviderType.GOOGLE_DRIVE:
+                from services.google_drive import get_storage_quota as g_quota
+                q = await g_quota(acc, db)
+            elif acc.provider == ProviderType.ONEDRIVE:
+                from services.microsoft_graph import get_storage_quota as ms_quota
+                q = await ms_quota(acc, db)
+            else:
+                continue
+
+            quotas.append(QuotaResponse(
+                account_id=acc.id,
+                provider=acc.provider,
+                total_space=q.get("total_space"),
+                used_space=q.get("used_space"),
+                available_space=q.get("available_space"),
+            ))
+            if q.get("used_space"):
+                total_used += q["used_space"]
+            if q.get("total_space"):
+                total_space += q["total_space"]
+        except Exception:
+            # Individual provider failures shouldn't break the summary
+            quotas.append(QuotaResponse(
+                account_id=acc.id,
+                provider=acc.provider,
+            ))
+
+    return {
+        "quotas": quotas,
+        "total_used_space": total_used,
+        "total_space": total_space,
+        "total_available": total_space - total_used if total_space else None,
+    }
+
+
+@router.get("/{account_id}/quota", response_model=QuotaResponse)
+async def get_account_quota(account_id: int, db: Session = Depends(get_db)):
+    """Get storage quota for a specific account."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import get_storage_quota as g_quota
+            q = await g_quota(account, db)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import get_storage_quota as ms_quota
+            q = await ms_quota(account, db)
+        else:
+            raise HTTPException(status_code=400, detail=f"Quota not supported for {account.provider.value}")
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return QuotaResponse(
+        account_id=account.id,
+        provider=account.provider,
+        total_space=q.get("total_space"),
+        used_space=q.get("used_space"),
+        available_space=q.get("available_space"),
+    )
+
+
+@router.get("/{account_id}/trash")
+async def list_trash(account_id: int, db: Session = Depends(get_db)):
+    """List files in the trash/recycle bin for a storage account."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import list_trash_files as g_trash
+            files = await g_trash(account, db)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import list_trash_files as ms_trash
+            files = await ms_trash(account, db)
+        else:
+            raise HTTPException(status_code=400, detail=f"Trash not supported for {account.provider.value}")
+
+        items = []
+        for f in files:
+            mime_type = f.get("mimeType", "")
+            category = get_mime_type_category(mime_type)
+            items.append(FileItem(
+                id=f.get("id", ""),
+                name=f.get("name", ""),
+                mime_type=mime_type,
+                category=category,
+                size=int(f.get("size")) if f.get("size") else None,
+                size_formatted=format_file_size(int(f.get("size"))) if f.get("size") else None,
+                modified_time=f.get("modifiedTime"),
+                modified_time_formatted=format_modified_time(f.get("modifiedTime")) if f.get("modifiedTime") else None,
+                thumbnail_link=f.get("thumbnailLink"),
+                web_view_link=f.get("webViewLink"),
+                is_folder=category == "folder",
+            ))
+        return {"account_id": account.id, "items": items, "total_items": len(items)}
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{account_id}/trash/{file_id}/restore")
+async def restore_trash_item(account_id: int, file_id: str, db: Session = Depends(get_db)):
+    """Restore a file from the trash/recycle bin."""
+    account = db.query(ConnectedAccount).filter(ConnectedAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import restore_from_trash as g_restore
+            result = await g_restore(account, db, file_id)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import restore_from_trash as ms_restore
+            result = await ms_restore(account, db, file_id)
+        else:
+            raise HTTPException(status_code=400, detail=f"Restore not supported for {account.provider.value}")
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"status": "restored", "file_id": file_id, "result": result}
+
+
 @router.get("/{account_id}/files", response_model=FileListResponse)
 async def list_files(account_id: int, parent_id: str = "root", page_size: int = 100, db: Session = Depends(get_db)):
     """List files and folders from a connected storage account."""

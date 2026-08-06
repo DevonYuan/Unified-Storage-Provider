@@ -1,0 +1,153 @@
+@import './variables.css';
+
+.topbar {
+  position: sticky;
+  top: 0;
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+  gap: 24px;
+}
+
+/* Breadcrumb */
+.topbar__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.topbar__breadcrumb-item {
+  font-size: 13px;
+  color: var(--fg-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: color 0.12s ease;
+  white-space: nowrap;
+}
+
+.topbar__breadcrumb-item:hover {
+  color: var(--fg);
+}
+
+.topbar__breadcrumb-item--home {
+  font-weight: 500;
+}
+
+.topbar__breadcrumb-item--current {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.topbar__breadcrumb-segment {
+  display: flex;
+  align-items: center;
+}
+
+.topbar__breadcrumb-sep {
+  color: var(--fg-subtle);
+  flex-shrink: 0;
+}
+
+/* Search */
+.topbar__search {
+  flex: 1;
+  max-width: 480px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.topbar__search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--fg-muted);
+  pointer-events: none;
+}
+
+.topbar__search-input {
+  width: 100%;
+  padding: 7px 12px 7px 34px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--fg);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.topbar__search-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.topbar__search-input:focus {
+  border-color: var(--border-light);
+}
+
+.topbar__search-kbd {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  padding: 2px 5px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-family: inherit;
+  pointer-events: none;
+}
+
+/* Actions */
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.topbar__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--fg-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.topbar__action-btn:hover {
+  color: var(--fg);
+  border-color: var(--border-light);
+}
+
+.topbar__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--surface-active);
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}

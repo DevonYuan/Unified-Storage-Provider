@@ -161,6 +161,24 @@ export const storageApi = {
       method: 'POST',
     });
   },
+
+  async getQuota(accountId) {
+    return request(`/storage/${accountId}/quota`);
+  },
+
+  async getQuotaSummary() {
+    return request('/storage/quota/summary');
+  },
+
+  async listTrash(accountId) {
+    return request(`/storage/${accountId}/trash`);
+  },
+
+  async restoreTrash(accountId, fileId) {
+    return request(`/storage/${accountId}/trash/${encodeURIComponent(fileId)}/restore`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const omnidriveApi = {

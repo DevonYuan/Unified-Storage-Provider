@@ -620,3 +620,161 @@ async def copy_drive_file(
             raise GoogleDriveError(f"Google Drive copy error: {error_msg}")
 
         return response.json()
+
+
+async def get_storage_quota(
+    account: "ConnectedAccount",
+    db: Session,
+) -> Dict[str, Any]:
+    """Get storage quota information from Google Drive.
+
+    Returns dict with total_space, used_space, available_space (all in bytes).
+    """
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            "https://www.googleapis.com/drive/v3/about",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"fields": "storageQuota"},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.get(
+                        "https://www.googleapis.com/drive/v3/about",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        params={"fields": "storageQuota"},
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
+
+        try:
+            data = response.json()
+        except Exception:
+            raise GoogleDriveError("Failed to parse quota response")
+
+        quota = data.get("storageQuota", {})
+        return {
+            "total_space": int(quota.get("limit", 0)) if quota.get("limit") else None,
+            "used_space": int(quota.get("usage", 0)),
+            "available_space": int(quota.get("limit", 0)) - int(quota.get("usage", 0)) if quota.get("limit") else None,
+        }
+
+
+async def list_trash_files(
+    account: "ConnectedAccount",
+    db: Session,
+) -> List[Dict[str, Any]]:
+    """List files in Google Drive trash."""
+    access_token = await get_valid_access_token(account, db)
+
+    all_files = []
+    page_token = None
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        while True:
+            params = {
+                "q": "trashed = true",
+                "pageSize": 100,
+                "fields": "files(id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,parents),nextPageToken",
+                "orderBy": "modifiedTime desc",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            response = await client.get(
+                "https://www.googleapis.com/drive/v3/files",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params=params,
+            )
+
+            if response.status_code == 401:
+                if account.refresh_token:
+                    try:
+                        token_response = await refresh_access_token(account.refresh_token)
+                        account.access_token = token_response["access_token"]
+                        db.commit()
+                        response = await client.get(
+                            "https://www.googleapis.com/drive/v3/files",
+                            headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                            params=params,
+                        )
+                    except Exception as e:
+                        raise GoogleDriveError(f"Failed to refresh access token: {e}")
+                else:
+                    raise GoogleDriveError("Access token expired and no refresh token available")
+
+            if response.status_code != 200:
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+                except (json.JSONDecodeError, ValueError):
+                    error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+                raise GoogleDriveError(f"Google Drive API error: {error_msg}")
+
+            data = response.json()
+            files = data.get("files", [])
+            all_files.extend(files)
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+    return all_files
+
+
+async def restore_from_trash(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+) -> Dict[str, Any]:
+    """Restore a file from Google Drive trash (untrash it)."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.patch(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"trashed": False},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.patch(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json={"trashed": False},
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
+
+        return response.json()

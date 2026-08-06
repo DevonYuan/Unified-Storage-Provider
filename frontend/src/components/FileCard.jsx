@@ -1,129 +1,90 @@
 import {
-  Folder,
-  Image,
-  Video,
-  Music,
-  FileText,
-  Table,
-  Presentation,
-  Archive,
-  Code,
-  File,
+  Folder, Image, Video, Music, FileText, Table, Presentation, Archive, Code, File,
 } from 'lucide-react'
 import '../styles/FileCard.css'
 
-function getCategoryIcon(category) {
-  const icons = {
-    folder: Folder,
-    image: Image,
-    video: Video,
-    audio: Music,
-    pdf: FileText,
-    document: FileText,
-    spreadsheet: Table,
-    presentation: Presentation,
-    archive: Archive,
-    code: Code,
-    other: File,
-  }
-  return icons[category] || icons.other
+const CATEGORY_ICONS = {
+  folder: Folder, image: Image, video: Video, audio: Music,
+  pdf: FileText, document: FileText, spreadsheet: Table,
+  presentation: Presentation, archive: Archive, code: Code, other: File,
 }
 
-export function FileCard({
-  file,
-  viewMode = 'grid',
-  providers = ['google'],
-  onOpen,
-  onContextMenu,
-}) {
-  const category = file.category
-  const isFolder = file.is_folder
-  const CategoryIcon = getCategoryIcon(category)
+const CATEGORY_COLORS = {
+  folder: '#eab308', image: '#22c55e', video: '#ef4444', audio: '#a855f7',
+  pdf: '#ef4444', document: '#3b82f6', spreadsheet: '#22c55e',
+  presentation: '#f97316', code: '#6366f1', archive: '#8b5cf6', other: '#6b7280',
+}
 
-  // Determine origin indicator class
-  const isMerged = providers.length > 1
+export function FileCard({ file, viewMode = 'grid', providers = [], onOpen, onContextMenu }) {
+  const category = file.category || 'other'
+  const isFolder = file.is_folder
+  const CategoryIcon = CATEGORY_ICONS[category] || CATEGORY_ICONS.other
+  const accentColor = CATEGORY_COLORS[category] || CATEGORY_COLORS.other
+
   const hasGoogle = providers.includes('google')
   const hasOnedrive = providers.includes('onedrive')
+  const isMerged = providers.length > 1
 
-  let originClass = 'file-card__origin--google'
-  let originTitle = 'Google Drive'
-  if (isMerged) {
-    originClass = 'file-card__origin--merged'
-    originTitle = 'Google Drive + OneDrive (merged)'
-  } else if (hasOnedrive) {
-    originClass = 'file-card__origin--onedrive'
-    originTitle = 'OneDrive'
-  }
+  let dotClass = 'file-card__dot--google'
+  let dotTitle = 'Google Drive'
+  if (isMerged) { dotClass = 'file-card__dot--merged'; dotTitle = 'Google Drive + OneDrive' }
+  else if (hasOnedrive) { dotClass = 'file-card__dot--onedrive'; dotTitle = 'OneDrive' }
 
   const handleClick = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (onOpen) {
-      onOpen(file)
-    }
+    e.preventDefault(); e.stopPropagation()
+    if (onOpen) onOpen(file)
   }
 
   const handleContextMenu = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (onContextMenu) {
-      onContextMenu(e, file)
-    }
+    e.preventDefault(); e.stopPropagation()
+    if (onContextMenu) onContextMenu(e, file)
   }
 
-  const iconSize = viewMode === 'list' ? 24 : 64
-  const contentClass = viewMode === 'list' ? 'file-card__content--list' : 'file-card__content'
+  if (viewMode === 'list') {
+    return (
+      <div className="file-card file-card--list" onClick={handleClick} onContextMenu={handleContextMenu}>
+        <div className={`file-card__dot ${dotClass}`} title={dotTitle} />
+        <CategoryIcon size={20} className="file-card__list-icon" color={accentColor} />
+        <span className="file-card__list-name">{file.name}</span>
+        <span className="file-card__list-meta">
+          {isFolder && file.item_count != null ? `${file.item_count} items` : file.size_formatted || ''}
+        </span>
+        <span className="file-card__list-time">{file.modified_time_formatted || ''}</span>
+      </div>
+    )
+  }
 
   return (
-    <article
-      className={`file-card ${viewMode === 'list' ? 'file-card--list' : 'file-card--grid'}`}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-    >
-      {/* Origin indicator - top left */}
-      <div
-        className={`file-card__origin ${originClass}`}
-        title={originTitle}
-      />
+    <article className="file-card file-card--grid" onClick={handleClick} onContextMenu={handleContextMenu}>
+      {/* Source dot */}
+      <div className={`file-card__dot ${dotClass}`} title={dotTitle} />
 
-      {/* Card content */}
-      <div className={contentClass}>
-        {isFolder ? (
-          // Folder: icon centered
-          <div className="file-card__icon-wrapper">
-            <CategoryIcon className="file-card__category-icon" size={iconSize} />
-          </div>
-        ) : file.category === 'image' && file.thumbnail_link ? (
-          // Image: thumbnail top half
-          <div className="file-card__thumbnail">
-            <img
-              src={file.thumbnail_link}
-              alt={file.name}
-              loading="lazy"
-            />
+      {/* Thumbnail */}
+      <div className="file-card__preview">
+        {category === 'image' && file.thumbnail_link ? (
+          <img src={file.thumbnail_link} alt={file.name} loading="lazy" className="file-card__thumb-img" />
+        ) : category === 'video' && file.thumbnail_link ? (
+          <div className="file-card__thumb-video">
+            <img src={file.thumbnail_link} alt={file.name} loading="lazy" className="file-card__thumb-img" />
+            <div className="file-card__play-btn"><div className="file-card__play-triangle" /></div>
           </div>
         ) : (
-          // Other files: icon centered
-          <div className="file-card__icon-wrapper">
-            <CategoryIcon className="file-card__category-icon" size={iconSize} />
+          <div className="file-card__icon-area">
+            <CategoryIcon size={36} strokeWidth={1.5} color={accentColor} />
           </div>
         )}
+      </div>
 
-        {/* File/Folder info */}
-        <div className="file-card__info">
-          <h3 className="file-card__name" title={file.name}>{file.name}</h3>
-          <div className="file-card__meta">
-            {file.size_formatted && !isFolder && (
-              <span className="file-card__size">{file.size_formatted}</span>
-            )}
-            {isFolder && file.item_count !== null && file.item_count !== undefined && (
-              <span className="file-card__count">{file.item_count} item{file.item_count !== 1 ? 's' : ''}</span>
-            )}
-            {file.modified_time_formatted && (
-              <span className="file-card__time">{file.modified_time_formatted}</span>
-            )}
-          </div>
-        </div>
+      {/* Footer */}
+      <div className="file-card__footer">
+        <span className="file-card__name" title={file.name}>{file.name}</span>
+        <span className="file-card__meta">
+          {isFolder && file.item_count != null
+            ? `${file.item_count} item${file.item_count !== 1 ? 's' : ''}`
+            : file.size_formatted || ''
+          }
+          {file.modified_time_formatted && <> · {file.modified_time_formatted}</>}
+        </span>
       </div>
     </article>
   )
