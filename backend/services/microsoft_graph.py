@@ -86,10 +86,12 @@ async def list_drive_files(
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
-            )
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise MicrosoftGraphError(f"Microsoft Graph API error: {error_msg}")
 
         data = response.json()
         items = data.get("value", [])
@@ -114,11 +116,29 @@ async def get_file_metadata(
             headers={"Authorization": f"Bearer {access_token}"},
         )
 
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+
+                    response = await client.get(
+                        f"{GRAPH_BASE}/me/drive/items/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                    )
+                except Exception as e:
+                    raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+            else:
+                raise MicrosoftGraphError("Access token expired and no refresh token available")
+
         if response.status_code != 200:
-            error_data = response.json()
-            raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
-            )
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise MicrosoftGraphError(f"Microsoft Graph API error: {error_msg}")
 
         return _ms_item_to_fileitem(response.json())
 
@@ -183,9 +203,13 @@ async def upload_drive_file(
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
         if response.status_code not in (200, 201):
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"Microsoft Graph API error: {error_msg}"
             )
 
         return _ms_item_to_fileitem(response.json())
@@ -234,9 +258,13 @@ async def create_drive_folder(
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
         if response.status_code not in (200, 201):
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"Microsoft Graph API error: {error_msg}"
             )
 
         return _ms_item_to_fileitem(response.json())
@@ -320,9 +348,13 @@ async def delete_drive_file(
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
         if response.status_code not in (200, 204):
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"Microsoft Graph API error: {error_msg}"
             )
 
 
@@ -340,39 +372,75 @@ async def download_drive_file(
             f"{GRAPH_BASE}/me/drive/items/{file_id}",
             headers={"Authorization": f"Bearer {access_token}"},
         )
-        if meta_response.status_code != 200:
-            raise MicrosoftGraphError("Failed to fetch file metadata")
 
-        meta = meta_response.json()
-        filename = meta.get("name", "download")
-        file_info = meta.get("file", {})
-        mime_type = file_info.get("mimeType", "application/octet-stream")
-
-        # Download content
-        response = await client.get(
-            f"{GRAPH_BASE}/me/drive/items/{file_id}/content",
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-
-        if response.status_code == 401:
+        if meta_response.status_code == 401:
             if account.refresh_token:
                 try:
                     token_response = await refresh_access_token(account.refresh_token)
                     account.access_token = token_response["access_token"]
                     db.commit()
-                    response = await client.get(
-                        f"{GRAPH_BASE}/me/drive/items/{file_id}/content",
-                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                    access_token = token_response["access_token"]
+                    meta_response = await client.get(
+                        f"{GRAPH_BASE}/me/drive/items/{file_id}",
+                        headers={"Authorization": f"Bearer {access_token}"},
                     )
                 except Exception as e:
                     raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
             else:
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
+        if meta_response.status_code != 200:
+            try:
+                error_data = meta_response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {meta_response.status_code}"
+            raise MicrosoftGraphError(f"Failed to fetch file metadata: {error_msg}")
+
+        try:
+            meta = meta_response.json()
+        except Exception:
+            raise MicrosoftGraphError("Failed to parse file metadata response")
+        filename = meta.get("name", "download")
+        file_info = meta.get("file", {})
+        mime_type = file_info.get("mimeType", "application/octet-stream")
+
+        # Prefer the pre-authenticated download URL from metadata.
+        # The /content endpoint returns a 302 redirect which httpx may not follow.
+        download_url = meta.get("@microsoft.graph.downloadUrl")
+        if download_url:
+            # Download from the pre-authenticated URL (no auth header needed)
+            response = await client.get(download_url)
+        else:
+            # Fall back to /content endpoint
+            response = await client.get(
+                f"{GRAPH_BASE}/me/drive/items/{file_id}/content",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+
+            if response.status_code == 401:
+                if account.refresh_token:
+                    try:
+                        token_response = await refresh_access_token(account.refresh_token)
+                        account.access_token = token_response["access_token"]
+                        db.commit()
+                        response = await client.get(
+                            f"{GRAPH_BASE}/me/drive/items/{file_id}/content",
+                            headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        )
+                    except Exception as e:
+                        raise MicrosoftGraphError(f"Failed to refresh access token: {e}")
+                else:
+                    raise MicrosoftGraphError("Access token expired and no refresh token available")
+
         if response.status_code != 200:
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftGraphError(
-                f"Microsoft Graph API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"Microsoft Graph API error: {error_msg}"
             )
 
         return response.content, filename, mime_type
@@ -415,9 +483,13 @@ async def move_drive_file(
                 raise MicrosoftGraphError("Access token expired and no refresh token available")
 
         if response.status_code not in (200, 201):
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftGraphError(
-                f"Microsoft Graph move error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"Microsoft Graph move error: {error_msg}"
             )
 
         return _ms_item_to_fileitem(response.json())

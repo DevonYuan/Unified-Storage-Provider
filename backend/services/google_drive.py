@@ -86,8 +86,12 @@ async def list_drive_files(
                     raise GoogleDriveError("Access token expired and no refresh token available")
 
             if response.status_code != 200:
-                error_data = response.json()
-                raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+                except (json.JSONDecodeError, ValueError):
+                    error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+                raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
             data = response.json()
             files = data.get("files", [])
@@ -119,9 +123,32 @@ async def get_file_metadata(
             },
         )
 
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+
+                    response = await client.get(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        params={
+                            "fields": "id,name,mimeType,size,modifiedTime,thumbnailLink,webViewLink,parents"
+                        },
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         return response.json()
 
@@ -199,8 +226,12 @@ async def upload_drive_file(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         return response.json()
 
@@ -246,8 +277,12 @@ async def create_drive_folder(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         return response.json()
 
@@ -386,8 +421,12 @@ async def upload_file_to_drive(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         # Get the uploaded file metadata
         file_id = response.json().get("id")
@@ -427,8 +466,12 @@ async def delete_drive_file(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code not in (200, 204):
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
 
 async def download_drive_file(
@@ -442,6 +485,8 @@ async def download_drive_file(
     async with httpx.AsyncClient(timeout=120.0) as client:
         # First get file metadata for the name and mime type
         meta = await get_file_metadata(account, db, file_id)
+        # Re-read token in case get_file_metadata refreshed it
+        access_token = account.access_token
         filename = meta.get("name", "download")
         mime_type = meta.get("mimeType", "application/octet-stream")
 
@@ -467,8 +512,12 @@ async def download_drive_file(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive API error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         return response.content, filename, mime_type
 
@@ -516,8 +565,12 @@ async def move_drive_file(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive move error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive API error: {error_msg}")
 
         return response.json()
 
@@ -559,7 +612,11 @@ async def copy_drive_file(
                 raise GoogleDriveError("Access token expired and no refresh token available")
 
         if response.status_code != 200:
-            error_data = response.json()
-            raise GoogleDriveError(f"Google Drive copy error: {error_data.get('error', {}).get('message', 'Unknown error')}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive copy error: {error_msg}")
 
         return response.json()

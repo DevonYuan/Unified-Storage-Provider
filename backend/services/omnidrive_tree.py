@@ -637,8 +637,16 @@ async def _rename_on_provider(
                 json={"name": new_name},
             )
             if resp.status_code != 200:
-                raise GoogleDriveError(resp.json().get("error", {}).get("message", "Unknown error"))
-            return resp.json()
+                try:
+                    error_data = resp.json()
+                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                except Exception:
+                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                raise GoogleDriveError(error_msg)
+            try:
+                return resp.json()
+            except Exception:
+                raise GoogleDriveError("Provider returned invalid JSON")
     else:
         token = await ms_token(account, db)
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -648,9 +656,17 @@ async def _rename_on_provider(
                 json={"name": new_name},
             )
             if resp.status_code != 200:
-                raise MicrosoftGraphError(resp.json().get("error", {}).get("message", "Unknown error"))
+                try:
+                    error_data = resp.json()
+                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                except Exception:
+                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                raise MicrosoftGraphError(error_msg)
             from services.microsoft_graph import _ms_item_to_fileitem
-            return _ms_item_to_fileitem(resp.json())
+            try:
+                return _ms_item_to_fileitem(resp.json())
+            except Exception:
+                raise MicrosoftGraphError("Provider returned invalid JSON")
 
 
 def _get_original_name_from_result(result: Dict[str, Any]) -> Optional[str]:

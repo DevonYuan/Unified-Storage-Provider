@@ -427,20 +427,44 @@ export function ConnectedHomePage() {
     }
   }
 
-  const handleDownload = (file) => {
+  const handleDownload = async (file) => {
     let url
     if (selectedView === 'omnidrive') {
       url = omnidriveApi.getDownloadUrl(file.id)
     } else {
       url = storageApi.getDownloadUrl(selectedView, file.id)
     }
-    // Trigger download by creating a temporary anchor
-    const a = document.createElement('a')
-    a.href = url
-    a.download = file.name
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+
+    try {
+      const response = await fetch(url, { credentials: 'include' })
+
+      if (!response.ok) {
+        // Try to parse the error from the backend
+        let errorMsg = `Download failed (HTTP ${response.status})`
+        try {
+          const errorData = await response.json()
+          if (errorData.detail) {
+            errorMsg = errorData.detail
+          }
+        } catch {}
+        throw new Error(errorMsg)
+      }
+
+      // Get the file as a blob and trigger download
+      const blob = await response.blob()
+
+      // Create a blob URL and trigger download without navigating away
+      const blobUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = file.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      setError(`Failed to download "${file.name}": ${err.message}`)
+    }
   }
 
   // ── Cut / Copy / Paste ─────────────────────────────────────────────

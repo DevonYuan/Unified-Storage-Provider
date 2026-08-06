@@ -97,12 +97,19 @@ async def exchange_code_for_tokens(code: str, redirect_uri: str) -> Dict[str, An
         )
 
         if response.status_code != 200:
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftOAuthError(
-                f"Token exchange failed: {error_data.get('error_description', error_data.get('error', 'Unknown error'))}"
+                f"Token exchange failed: {error_msg}"
             )
 
-        return response.json()
+        try:
+            return response.json()
+        except Exception:
+            raise MicrosoftOAuthError("Token exchange returned invalid JSON")
 
 
 async def get_user_info(access_token: str) -> Dict[str, Any]:
@@ -119,12 +126,19 @@ async def get_user_info(access_token: str) -> Dict[str, Any]:
         )
 
         if response.status_code != 200:
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftOAuthError(
-                f"User info request failed: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                f"User info request failed: {error_msg}"
             )
 
-        return response.json()
+        try:
+            return response.json()
+        except Exception:
+            raise MicrosoftOAuthError("User info response is not valid JSON")
 
 
 async def refresh_access_token(refresh_token: str) -> Dict[str, Any]:
@@ -152,12 +166,19 @@ async def refresh_access_token(refresh_token: str) -> Dict[str, Any]:
         )
 
         if response.status_code != 200:
-            error_data = response.json()
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error_description', error_data.get('error', 'Unknown error'))
+            except Exception:
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
             raise MicrosoftOAuthError(
-                f"Token refresh failed: {error_data.get('error_description', error_data.get('error', 'Unknown error'))}"
+                f"Token refresh failed: {error_msg}"
             )
 
-        return response.json()
+        try:
+            return response.json()
+        except Exception:
+            raise MicrosoftOAuthError("Token refresh returned invalid JSON")
 
 
 def store_refresh_token(keyring_key: str, refresh_token: str) -> None:

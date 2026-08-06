@@ -338,8 +338,16 @@ async def rename_file(
                 json={"name": request.name},
             )
             if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail=resp.json().get("error", {}).get("message", "Unknown error"))
-            return resp.json()
+                try:
+                    error_data = resp.json()
+                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                except Exception:
+                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                raise HTTPException(status_code=400, detail=error_msg)
+            try:
+                return resp.json()
+            except Exception:
+                raise HTTPException(status_code=502, detail="Provider returned invalid JSON")
     elif account.provider == ProviderType.ONEDRIVE:
         from services.microsoft_graph import get_valid_access_token as ms_token
         token = await ms_token(account, db)
@@ -350,8 +358,16 @@ async def rename_file(
                 json={"name": request.name},
             )
             if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail=resp.json().get("error", {}).get("message", "Unknown error"))
-            return resp.json()
+                try:
+                    error_data = resp.json()
+                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                except Exception:
+                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                raise HTTPException(status_code=400, detail=error_msg)
+            try:
+                return resp.json()
+            except Exception:
+                raise HTTPException(status_code=502, detail="Provider returned invalid JSON")
     else:
         raise HTTPException(status_code=400, detail=f"Rename not supported for {account.provider.value}")
 
@@ -412,6 +428,8 @@ async def download_file(
         raise HTTPException(status_code=400, detail=str(e))
     except MicrosoftGraphError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     return StreamingResponse(
         BytesIO(content),
