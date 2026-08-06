@@ -443,10 +443,10 @@ export function ConnectedHomePage() {
                     }}
                     className="content-header__select"
                   >
-                    <option value="omnidrive">🌐 OmniDrive</option>
+                    <option value="omnidrive"> OmniDrive</option>
                     {accounts.map(acc => (
                       <option key={acc.account_id} value={acc.account_id}>
-                        {acc.provider === 'google_drive' ? '🟢 Google' : '🔵 OneDrive'} · {acc.display_name}
+                        {acc.provider === 'google_drive' ? ' Google' : ' OneDrive'} · {acc.display_name}
                       </option>
                     ))}
                   </select>
