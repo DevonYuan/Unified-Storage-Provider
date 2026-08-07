@@ -22,7 +22,7 @@ function formatBytes(bytes) {
   return `${size >= 10 ? Math.round(size) : size.toFixed(1)} ${units[i]}`
 }
 
-export function Sidebar({ activeNav, onNavChange, accounts }) {
+export function Sidebar({ activeNav, onNavChange, accounts, onUpload }) {
   const [sourcesOpen, setSourcesOpen] = useState(true)
   const [quotas, setQuotas] = useState([])
   const [totalUsed, setTotalUsed] = useState(0)
@@ -70,7 +70,7 @@ export function Sidebar({ activeNav, onNavChange, accounts }) {
           <span>New upload</span>
           <kbd className="sidebar__shortcut">⌘U</kbd>
         </label>
-        <input type="file" id="file-upload-sidebar" style={{ display: 'none' }} onChange={() => {}} />
+        <input type="file" id="file-upload-sidebar" style={{ display: 'none' }} onChange={(e) => onUpload && onUpload(e)} />
       </div>
 
       {/* Workspace nav */}

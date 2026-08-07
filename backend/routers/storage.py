@@ -476,49 +476,21 @@ async def rename_file(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    import httpx
-    if account.provider == ProviderType.GOOGLE_DRIVE:
-        from services.google_drive import get_valid_access_token as google_token
-        token = await google_token(account, db)
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.patch(
-                f"https://www.googleapis.com/drive/v3/files/{file_id}",
-                headers={"Authorization": f"Bearer {token}"},
-                json={"name": request.name},
-            )
-            if resp.status_code != 200:
-                try:
-                    error_data = resp.json()
-                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
-                except Exception:
-                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                raise HTTPException(status_code=400, detail=error_msg)
-            try:
-                return resp.json()
-            except Exception:
-                raise HTTPException(status_code=502, detail="Provider returned invalid JSON")
-    elif account.provider == ProviderType.ONEDRIVE:
-        from services.microsoft_graph import get_valid_access_token as ms_token
-        token = await ms_token(account, db)
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.patch(
-                f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}",
-                headers={"Authorization": f"Bearer {token}"},
-                json={"name": request.name},
-            )
-            if resp.status_code != 200:
-                try:
-                    error_data = resp.json()
-                    error_msg = error_data.get("error", {}).get("message", "Unknown error")
-                except Exception:
-                    error_msg = f"HTTP {resp.status_code}: {resp.text[:200]}"
-                raise HTTPException(status_code=400, detail=error_msg)
-            try:
-                return resp.json()
-            except Exception:
-                raise HTTPException(status_code=502, detail="Provider returned invalid JSON")
-    else:
-        raise HTTPException(status_code=400, detail=f"Rename not supported for {account.provider.value}")
+    try:
+        if account.provider == ProviderType.GOOGLE_DRIVE:
+            from services.google_drive import rename_drive_file
+            result = await rename_drive_file(account, db, file_id, request.name)
+        elif account.provider == ProviderType.ONEDRIVE:
+            from services.microsoft_graph import rename_drive_file as rename_ms_file
+            result = await rename_ms_file(account, db, file_id, request.name)
+        else:
+            raise HTTPException(status_code=400, detail=f"Rename not supported for {account.provider.value}")
+    except GoogleDriveError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except MicrosoftGraphError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return result
 
 
 @router.delete("/{account_id}/files/{file_id}")
@@ -554,9 +526,10 @@ async def delete_file(
 async def download_file(
     account_id: int,
     file_id: str,
+    download_format: str = None,
     db: Session = Depends(get_db),
 ):
-    """Download a file from a specific provider."""
+    """Download a file from a specific provider. Pass ?format=zip for folder zip downloads."""
     from fastapi.responses import StreamingResponse
     from io import BytesIO
 
@@ -567,10 +540,10 @@ async def download_file(
     try:
         if account.provider == ProviderType.GOOGLE_DRIVE:
             from services.google_drive import download_drive_file
-            content, filename, mime_type = await download_drive_file(account, db, file_id)
+            content, filename, mime_type = await download_drive_file(account, db, file_id, download_format=download_format)
         elif account.provider == ProviderType.ONEDRIVE:
             from services.microsoft_graph import download_drive_file as download_ms_file
-            content, filename, mime_type = await download_ms_file(account, db, file_id)
+            content, filename, mime_type = await download_ms_file(account, db, file_id, download_format=download_format)
         else:
             raise HTTPException(status_code=400, detail=f"Download not supported for {account.provider.value}")
     except GoogleDriveError as e:

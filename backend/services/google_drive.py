@@ -287,68 +287,6 @@ async def create_drive_folder(
         return response.json()
 
 
-def get_mime_type_category(mime_type: str) -> str:
-    """
-    Categorize a MIME type for display.
-
-    Returns: 'folder', 'image', 'video', 'audio', 'document', 'spreadsheet',
-             'presentation', 'pdf', 'archive', 'code', 'other'
-    """
-    if mime_type == "application/vnd.google-apps.folder":
-        return "folder"
-    elif mime_type.startswith("image/"):
-        return "image"
-    elif mime_type.startswith("video/"):
-        return "video"
-    elif mime_type.startswith("audio/"):
-        return "audio"
-    elif mime_type == "application/pdf":
-        return "pdf"
-    elif mime_type in [
-        "application/vnd.google-apps.document",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-        "text/plain",
-        "text/markdown",
-    ]:
-        return "document"
-    elif mime_type in [
-        "application/vnd.google-apps.spreadsheet",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-        "text/csv",
-    ]:
-        return "spreadsheet"
-    elif mime_type in [
-        "application/vnd.google-apps.presentation",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/vnd.ms-powerpoint",
-    ]:
-        return "presentation"
-    elif mime_type in [
-        "application/zip",
-        "application/x-rar-compressed",
-        "application/x-7z-compressed",
-        "application/gzip",
-        "application/x-tar",
-    ]:
-        return "archive"
-    elif mime_type in [
-        "application/javascript",
-        "application/typescript",
-        "application/json",
-        "text/html",
-        "text/css",
-        "text/x-python",
-        "text/x-java-source",
-        "text/x-c",
-        "text/x-cpp",
-    ]:
-        return "code"
-    else:
-        return "other"
-
-
 async def upload_file_to_drive(
     account: "ConnectedAccount",
     db: Session,
@@ -478,8 +416,11 @@ async def download_drive_file(
     account: "ConnectedAccount",
     db: Session,
     file_id: str,
+    download_format: str = None,
 ) -> tuple:
     """Download a file from Google Drive. Returns (content_bytes, filename, mime_type)."""
+    if download_format == "zip":
+        raise GoogleDriveError("Folder ZIP download is not supported for Google Drive. Use OneDrive for folder downloads.")
     access_token = await get_valid_access_token(account, db)
 
     async with httpx.AsyncClient(timeout=120.0) as client:
@@ -620,6 +561,52 @@ async def copy_drive_file(
             raise GoogleDriveError(f"Google Drive copy error: {error_msg}")
 
         return response.json()
+
+
+async def rename_drive_file(
+    account: "ConnectedAccount",
+    db: Session,
+    file_id: str,
+    new_name: str,
+) -> Dict[str, Any]:
+    """Rename a file or folder in Google Drive."""
+    access_token = await get_valid_access_token(account, db)
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.patch(
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"name": new_name},
+        )
+
+        if response.status_code == 401:
+            if account.refresh_token:
+                try:
+                    token_response = await refresh_access_token(account.refresh_token)
+                    account.access_token = token_response["access_token"]
+                    db.commit()
+                    response = await client.patch(
+                        f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                        headers={"Authorization": f"Bearer {token_response['access_token']}"},
+                        json={"name": new_name},
+                    )
+                except Exception as e:
+                    raise GoogleDriveError(f"Failed to refresh access token: {e}")
+            else:
+                raise GoogleDriveError("Access token expired and no refresh token available")
+
+        if response.status_code != 200:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('error', {}).get('message', 'Unknown error')
+            except (json.JSONDecodeError, ValueError):
+                error_msg = f"HTTP {response.status_code}: {response.text[:200]}"
+            raise GoogleDriveError(f"Google Drive rename error: {error_msg}")
+
+        try:
+            return response.json()
+        except Exception:
+            raise GoogleDriveError("Provider returned invalid JSON")
 
 
 async def get_storage_quota(

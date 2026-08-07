@@ -101,16 +101,14 @@ export function ContextMenu({ x, y, file, clipboardCount, onClose, onRename, onD
             <span>Rename</span>
           </button>
 
-          {!isFolder && (
-            <button
-              className="context-menu__item"
-              onClick={() => { onDownload(file); onClose() }}
-              role="menuitem"
-            >
-              <Download size={14} className="context-menu__icon" />
-              <span>Download</span>
-            </button>
-          )}
+          <button
+            className="context-menu__item"
+            onClick={() => { onDownload(file); onClose() }}
+            role="menuitem"
+          >
+            <Download size={14} className="context-menu__icon" />
+            <span>{isFolder ? 'Download as ZIP' : 'Download'}</span>
+          </button>
 
           <div className="context-menu__divider" />
 

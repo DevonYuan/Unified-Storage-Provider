@@ -163,7 +163,7 @@ export function ConnectedHomePage() {
   // ── Upload ──────────────────────────────────────────────────────
 
   const uploadFile = async (e) => {
-    const fileInput = document.getElementById('file-upload-main')
+    const fileInput = e.target
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) return
     const file = fileInput.files[0]
     setUploading(true)
@@ -270,8 +270,8 @@ export function ConnectedHomePage() {
     setReconnecting(provider)
     try {
       const redirectUri = provider === 'google'
-        ? 'http://localhost:8000/auth/google/callback'
-        : 'http://localhost:8000/auth/microsoft/callback'
+        ? `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/auth/google/callback`
+        : `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/auth/microsoft/callback`
       const { auth_url, state } = provider === 'google'
         ? await authApi.startGoogleOAuth(redirectUri)
         : await authApi.startMicrosoftOAuth(redirectUri)
@@ -323,6 +323,12 @@ export function ConnectedHomePage() {
     let url
     if (selectedView === 'omnidrive') url = omnidriveApi.getDownloadUrl(file.id)
     else url = storageApi.getDownloadUrl(selectedView, file.id)
+
+    // For folders, request ZIP format
+    if (file.is_folder) {
+      url += '?format=zip'
+    }
+
     try {
       const response = await fetch(url, { credentials: 'include' })
       if (!response.ok) {
@@ -333,7 +339,8 @@ export function ConnectedHomePage() {
       const blob = await response.blob()
       const blobUrl = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = blobUrl; a.download = file.name
+      a.href = blobUrl
+      a.download = file.is_folder ? `${file.name}.zip` : file.name
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       window.URL.revokeObjectURL(blobUrl)
     } catch (err) { setError(`Failed to download "${file.name}": ${err.message}`) }
@@ -406,6 +413,7 @@ export function ConnectedHomePage() {
         activeNav={activeNav}
         onNavChange={handleNavChange}
         accounts={accounts}
+        onUpload={uploadFile}
       />
 
       <div className="app-main">

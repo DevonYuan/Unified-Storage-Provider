@@ -188,9 +188,10 @@ async def delete_file(
 @router.get("/files/{virtual_id}/download")
 async def download_file(
     virtual_id: str,
+    download_format: str = None,
     db: Session = Depends(get_db),
 ):
-    """Download a file from the unified view."""
+    """Download a file from the unified view. Pass ?format=zip for folder zip downloads."""
     from fastapi.responses import StreamingResponse
     from io import BytesIO
 
@@ -207,10 +208,10 @@ async def download_file(
     try:
         if account.provider.value == "google_drive":
             from services.google_drive import download_drive_file
-            content, filename, mime_type = await download_drive_file(account, db, real_id)
+            content, filename, mime_type = await download_drive_file(account, db, real_id, download_format=download_format)
         else:
             from services.microsoft_graph import download_drive_file as download_ms_file
-            content, filename, mime_type = await download_ms_file(account, db, real_id)
+            content, filename, mime_type = await download_ms_file(account, db, real_id, download_format=download_format)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
