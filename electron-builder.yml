@@ -23,9 +23,7 @@ extraResources:
 
 win:
   target:
-    - target: nsis
+    - target: portable
       arch: [x64]
 
-nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+compression: normal
