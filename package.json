@@ -8,7 +8,9 @@
     "dev": "cd frontend && vite",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "cd frontend && vite build",
+    "build:backend": "cd backend && python -m PyInstaller --onefile --name omnidrive-backend --hidden-import uvicorn.logging --hidden-import uvicorn.loops --hidden-import uvicorn.protocols --hidden-import uvicorn.lifespan --hidden-import sqlalchemy --hidden-import keyring.backends.Windows --hidden-import keyring.backends.SecretService --hidden-import keyring.backends.macOS --hidden-import keyring.backends --hidden-import pydantic --hidden-import pydantic_settings --hidden-import httpx --hidden-import routers --hidden-import services --hidden-import models --hidden-import database_driver --hidden-import config --hidden-import services.google_drive --hidden-import services.microsoft_graph --hidden-import services.google_oauth --hidden-import services.microsoft_oauth --hidden-import services.omnidrive_tree --hidden-import routers.auth --hidden-import routers.storage --hidden-import routers.omnidrive --collect-all uvicorn main.py",
     "build:electron": "npm run build && electron-builder",
+    "build:electron:full": "npm run build && npm run build:backend && electron-builder",
     "preview": "cd frontend && vite preview",
     "start": "electron ."
   },

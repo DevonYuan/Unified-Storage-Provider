@@ -6,9 +6,10 @@
  */
 
 import electron from 'electron'
-const { app, BrowserWindow, dialog } = electron
+const { app, BrowserWindow, dialog, Menu } = electron
 import { spawn } from 'child_process'
 import path from 'path'
+import fs from 'fs'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -27,22 +28,52 @@ function getBackendDir() {
   return path.join(process.resourcesPath, 'backend')
 }
 
+function getBackendExe() {
+  if (isDev) {
+    return path.resolve(__dirname, '..', 'backend', 'dist', 'omnidrive-backend.exe')
+  }
+  return path.join(process.resourcesPath, 'backend', 'omnidrive-backend.exe')
+}
+
 function startBackend() {
   const backendDir = getBackendDir()
-  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+  const backendExe = getBackendExe()
 
-  console.log(`[electron] Starting backend: ${pythonCmd} -m uvicorn main:app --host 127.0.0.1 --port ${BACKEND_PORT}`)
+  // In production, try standalone .exe first (no Python required).
+  // In development, always use Python source (the .exe may be blocked by AppLocker).
+  if (!isDev && fs.existsSync(backendExe)) {
+    console.log(`[electron] Starting backend (exe): ${backendExe}`)
+    backendProcess = spawn(backendExe, [], {
+      cwd: backendDir,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  } else {
+    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+    console.log(`[electron] Starting backend (python): ${pythonCmd} -m uvicorn main:app`)
 
-  backendProcess = spawn(pythonCmd, [
-    '-m', 'uvicorn', 'main:app',
-    '--host', '127.0.0.1',
-    '--port', String(BACKEND_PORT),
-    '--log-level', 'info',
-  ], {
-    cwd: backendDir,
-    env: { ...process.env },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+    backendProcess = spawn(pythonCmd, [
+      '-m', 'uvicorn', 'main:app',
+      '--host', '127.0.0.1',
+      '--port', String(BACKEND_PORT),
+      '--log-level', 'info',
+    ], {
+      cwd: backendDir,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    backendProcess.on('error', (err) => {
+      if (err.code === 'ENOENT') {
+        dialog.showErrorBox(
+          'Python Not Found',
+          'Could not find Python. Make sure Python is installed and added to your PATH.\n\n' +
+          'You can also start the backend manually:\n' +
+          `cd ${backendDir}\npython -m uvicorn main:app --host 127.0.0.1 --port ${BACKEND_PORT}`
+        )
+      }
+    })
+  }
 
   backendProcess.stdout.on('data', (data) => {
     console.log(`[backend] ${data.toString().trim()}`)
@@ -146,6 +177,7 @@ function createWindow() {
 // ── App lifecycle ────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null)  // Remove default menu bar
   startBackend()
 
   const backendReady = await waitForBackend()
