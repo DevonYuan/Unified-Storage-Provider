@@ -24,3 +24,6 @@ backend/server.log
 # Node modules 
 frontend/node_modules/
 node_modules
+
+# Packaging as a dekstop app
+electron/
