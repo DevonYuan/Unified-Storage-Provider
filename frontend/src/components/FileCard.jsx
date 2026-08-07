@@ -44,7 +44,7 @@ export function FileCard({ file, viewMode = 'grid', providers = [], onOpen, onCo
     return (
       <div className="file-card file-card--list" onClick={handleClick} onContextMenu={handleContextMenu}>
         <div className={`file-card__dot ${dotClass}`} title={dotTitle} />
-        <CategoryIcon size={20} className="file-card__list-icon" color={accentColor} />
+        <CategoryIcon size={20} className="file-card__list-icon" color="#8a8a8a" />
         <span className="file-card__list-name">{file.name}</span>
         <span className="file-card__list-meta">
           {isFolder && file.item_count != null ? `${file.item_count} items` : file.size_formatted || ''}
@@ -70,7 +70,7 @@ export function FileCard({ file, viewMode = 'grid', providers = [], onOpen, onCo
           </div>
         ) : (
           <div className="file-card__icon-area">
-            <CategoryIcon size={36} strokeWidth={1.5} color={accentColor} />
+            <CategoryIcon size={36} strokeWidth={1.5} color="#8a8a8a" />
           </div>
         )}
       </div>

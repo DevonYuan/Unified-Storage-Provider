@@ -8,6 +8,22 @@
   background: var(--bg);
   color: var(--fg);
   font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/Liquid Glass.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(20px);
+  opacity: 0.1;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .app-main {
@@ -16,11 +32,25 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .app-content {
   padding: 24px 32px;
   flex: 1;
+  animation: app-fade-in 0.5s ease-out;
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Content Header ─────────────────────────────────────────────── */

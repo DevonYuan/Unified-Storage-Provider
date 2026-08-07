@@ -141,6 +141,20 @@
   background-color: var(--bg);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.login-page__unauthenticated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/Liquid Glass.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(20px);
+  opacity: 0.1;
+  z-index: 1;
 }
 
 /* Nav */
@@ -165,6 +179,18 @@
   max-width: 760px;
   margin: 0 auto;
   width: 100%;
+  animation: login-fade-in 0.5s ease-out;
+}
+
+@keyframes login-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-page__tagline {
