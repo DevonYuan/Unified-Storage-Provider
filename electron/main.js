@@ -6,11 +6,10 @@
  */
 
 import electron from 'electron'
-const { app, BrowserWindow } = electron
+const { app, BrowserWindow, dialog } = electron
 import { spawn } from 'child_process'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
@@ -19,32 +18,29 @@ const isDev = !app.isPackaged
 
 let backendProcess = null
 const BACKEND_PORT = 8000
+const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 
-function getBackendPath() {
+function getBackendDir() {
   if (isDev) {
-    // In development, run from the source directory
-    return path.resolve(__dirname, '..', 'backend', 'main.py')
+    return path.resolve(__dirname, '..', 'backend')
   }
-  // In production, the backend is bundled in resources/backend
-  return path.join(process.resourcesPath, 'backend', 'main.py')
-}
-
-function getPythonCommand() {
-  // On Windows, "python" or "python3". Electron-builder can bundle a Python runtime too.
-  return process.platform === 'win32' ? 'python' : 'python3'
+  return path.join(process.resourcesPath, 'backend')
 }
 
 function startBackend() {
-  const pythonCmd = getPythonCommand()
-  const backendPath = getBackendPath()
+  const backendDir = getBackendDir()
+  const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
 
-  console.log(`Starting backend: ${pythonCmd} ${backendPath}`)
+  console.log(`[electron] Starting backend: ${pythonCmd} -m uvicorn main:app --host 127.0.0.1 --port ${BACKEND_PORT}`)
 
-  backendProcess = spawn(pythonCmd, [backendPath], {
-    env: {
-      ...process.env,
-      OMNIDRIVE_PORT: String(BACKEND_PORT),
-    },
+  backendProcess = spawn(pythonCmd, [
+    '-m', 'uvicorn', 'main:app',
+    '--host', '127.0.0.1',
+    '--port', String(BACKEND_PORT),
+    '--log-level', 'info',
+  ], {
+    cwd: backendDir,
+    env: { ...process.env },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
@@ -53,39 +49,55 @@ function startBackend() {
   })
 
   backendProcess.stderr.on('data', (data) => {
-    console.error(`[backend:err] ${data.toString().trim()}`)
+    const msg = data.toString().trim()
+    // uvicorn writes normal logs to stderr, not errors
+    if (msg.includes('Error') || msg.includes('Traceback')) {
+      console.error(`[backend:err] ${msg}`)
+    } else {
+      console.log(`[backend] ${msg}`)
+    }
   })
 
   backendProcess.on('error', (err) => {
-    console.error('Failed to start backend:', err.message)
+    console.error('[electron] Failed to start backend:', err.message)
+    dialog.showErrorBox(
+      'Backend Error',
+      `Could not start the OmniDrive backend.\n\n${err.message}\n\nMake sure Python is installed and in your PATH.`
+    )
   })
 
   backendProcess.on('close', (code) => {
-    console.log(`Backend exited with code ${code}`)
+    console.log(`[electron] Backend exited with code ${code}`)
+    if (code !== 0 && code !== null) {
+      dialog.showErrorBox(
+        'Backend Crashed',
+        `The OmniDrive backend exited unexpectedly (code ${code}).\nCheck the console for details.`
+      )
+    }
     backendProcess = null
   })
 }
 
-async function waitForBackend(url, maxRetries = 30, delay = 500) {
+async function waitForBackend(maxRetries = 40, delay = 500) {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      const response = await fetch(`${url}/health`)
+      const response = await fetch(`${BACKEND_URL}/health`)
       if (response.ok) {
-        console.log('Backend is ready')
+        console.log('[electron] Backend is ready')
         return true
       }
     } catch {
-      // Backend not ready yet
+      // Still starting up
     }
     await new Promise((resolve) => setTimeout(resolve, delay))
   }
-  console.error('Backend failed to start within timeout')
+  console.error('[electron] Backend failed to start within timeout')
   return false
 }
 
 function stopBackend() {
   if (backendProcess) {
-    console.log('Stopping backend...')
+    console.log('[electron] Stopping backend...')
     if (process.platform === 'win32') {
       spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'])
     } else {
@@ -118,7 +130,6 @@ function createWindow() {
   // Load the frontend
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'))
   }
@@ -137,9 +148,16 @@ function createWindow() {
 app.whenReady().then(async () => {
   startBackend()
 
-  const backendReady = await waitForBackend(`http://localhost:${BACKEND_PORT}`)
+  const backendReady = await waitForBackend()
   if (!backendReady) {
-    console.error('Backend did not start. Exiting.')
+    dialog.showErrorBox(
+      'Backend Not Ready',
+      'The OmniDrive backend did not start in time.\n\n' +
+      'If you\'re running in development mode:\n' +
+      '1. Start the backend manually: cd backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000\n' +
+      '2. Restart the Electron app\n\n' +
+      'If you\'re running a packaged build, Python may not be installed.'
+    )
     app.quit()
     return
   }
