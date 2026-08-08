@@ -1,11 +1,13 @@
 # OmniDrive: Unified Cloud Storage Pool
 
-This is a personal tool that I made for myself, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, and unified virtual storage pool.
-This is a personal tool that I made for myself, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, and unified virtual storage pool.
+This desktop app is a personal tool, to manage my two cloud storage accounts (specifically Google Drive and Microsoft OneDrive) into a single seamless, unified storage pool.
 
-Instead of jumping between different interfaces and managing fragmented storage limits, OmniDrive acts as a router and abstraction layer. It presents a single interface where your total available storage is the sum of your connected providers, automatically handling distribution and retrieval across APIs without costing a dime in infrastructure fees.
+Instead of jumping between different interfaces and managing fragmented storage limits, OmniDrive acts as a router and abstraction layer. It presents a single interface where your total available storage is the sum of your connected providers, automatically handling distribution and retrieval across the two platforms.
 
-OmniDrive is a fully local, single-user desktop app. There is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
+Since OmniDrive is a fully local, single-user desktop app, there is no login, no account system, and no remote database — everything runs and lives on the user's own machine.
+
+## Using the App
+If you would like to use the app, you will need to contact me. I need to add you to a list of test users in GCP before you can use OmniDrive. If you attempt to user the app beforehand, you will be unable to access the Google Drive component, hence unable to experience the convenience layer that the app offers. 
 
 ## Tech Stack
 
@@ -15,9 +17,7 @@ OmniDrive is a fully local, single-user desktop app. There is no login, no accou
 - Managing Microsoft: Microsoft Graph Files API
 - Local metadata storage: SQLite (via SQLAlchemy), with Alembic for schema migrations
 - App data directory resolution: `platformdirs`
-- Local metadata storage: SQLite (via SQLAlchemy), with Alembic for schema migrations
 - Secret storage: `keyring` (delegates to the OS credential store — Keychain on macOS, Credential Manager on Windows, Secret Service/libsecret on Linux)
-- App data directory resolution: `platformdirs`
 
 **Frontend**: React with Vite
 
@@ -28,7 +28,7 @@ OmniDrive is a fully local, single-user desktop app. There is no login, no accou
 Since OmniDrive doesn't authenticate users or talk to a remote database, "local storage" covers two distinct concerns, handled differently:
 
 - **OAuth tokens (Google Drive / Microsoft Graph)** are stored via `keyring`, not in a plain file or database column. This delegates to the OS's real credential store rather than inventing our own encryption.
-- **Everything else** — connected account info, and (starting in phase 4) the virtual file system — lives in a local SQLite database. SQLite gives us transactional guarantees, which matter once folders are split across providers. We will split folders, but we definitely not chunk files. 
+- **Everything else** — connected account info, and (in phase 4) information regarding routing logic, lives in a SQLite database. SQLite gives us transactional guarantees, which matter once folders are split across providers. We will split folders, but we definitely not chunk files. 
 
 The SQLite file lives in the OS-standard app data directory (resolved via `platformdirs`), not a path relative to the source code, so it survives updates and behaves correctly across macOS/Windows/Linux.
 
@@ -48,13 +48,13 @@ Add support for Microsoft OneDrive. The end goal is that you can effectively nav
 Implement the core functionality that merges the storage from both providers into a single virtual file system. This includes handling automatic distribution across providers based on available space, and seamless retrieval regardless of where the file is physically stored. The user should experience this as a single, unified drive with combined storage capacity. The logic behind the internal file system is explained more in-depth in Phase 4's dedicated document, `docs/phase4.md`
 
 ### Phase 5 - Polishing the User Experience 
-Explore different UI styles and experiment with different AI tools to only enhance the UI, but do NOT break the functionality of the app. Just for the aesthetics, I might as well include a "tree" view where you can see a graph, but that is not related to functionality. Also, along the way I noticed that there were several features that were missing, but do not have to do with the Google Drive and OneDrive implemenetation, such as the ability to delte, rename, move, download files, and more. 
+Experimenting with different aesthetics, debugging, and updating the documents to reflect changes to the plans throughout the implementation. 
 
 ## Phase 6 - Packaging as a Desktop App
-Work in progress. We'll cross this bridge when we come to it.  
-
-## Footnote
-I originally intended for this app to support several users, but it must undergo Google's verification process to allow users without having to explicitly add them to a list in the GCP console. I must also investigate if Microsoft requires a similar verification process too. I fully intend on preparing demo videos and submitting them for review in the future, but until then, you will have to contact me, so that I can add you to a list of test users.
+Bundle the backend into a standalone executable with PyInstaller (so users don't need Python installed) and wrap the frontend in Electron. Electron spawns the backend as a subprocess on startup, and the React frontend communicates with it over localhost — no remote servers, no cloud dependencies. The OAuth flow required special handling since Chromium blocks redirects between `http://` and `file://` origins, solved by using Electron's IPC bridge to let the main process handle navigation directly. The app ships as an NSIS installer for Windows, with the Electron configuration structured so that adding macOS and Linux targets is straightforward later.
 
 ### Contact Info 
-To be added later 
+Email: devon.yuan@outlook.com <br>
+Phone: 236-458-2221 <br>
+LinkedIn: [Click Here](https://www.linkedin.com/in/devon-yuan-361575340/) <br>
+Discord: devon7021o_o
