@@ -118,6 +118,13 @@
   cursor: not-allowed;
 }
 
+.content-header__toolbar-btn--disabled,
+.content-header__toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .content-header__signout {
   display: flex;
   align-items: center;

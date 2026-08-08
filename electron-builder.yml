@@ -24,9 +24,15 @@ extraResources:
 
 win:
   target:
-    - target: portable
+    - target: nsis
       arch: [x64]
   sign: null
   signAndEditExecutable: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
 
 compression: normal

@@ -49,6 +49,18 @@ export function ConnectedHomePage() {
   const [currentPathName, setCurrentPathName] = useState('All files')
   const [pathStack, setPathStack] = useState([])
   const [reconnecting, setReconnecting] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  // Prevent overlapping operations (upload, delete, rename, etc.)
+  const runOperation = async (fn) => {
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      await fn()
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   const selectedAccount = accounts.find(acc => acc.account_id === selectedAccountId)
   const displayName = selectedView === 'omnidrive' ? currentPathName : currentFolderName
@@ -162,68 +174,72 @@ export function ConnectedHomePage() {
 
   // ── Upload ──────────────────────────────────────────────────────
 
-  const uploadFile = async (e) => {
+  const uploadFile = (e) => {
     const fileInput = e.target
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) return
     const file = fileInput.files[0]
-    setUploading(true)
-    try {
-      let uploadedFile
-      if (selectedView === 'omnidrive') {
-        uploadedFile = await omnidriveApi.uploadFile(file, currentPath)
-      } else {
-        if (!selectedAccountId) { setUploading(false); return }
-        uploadedFile = await storageApi.uploadFile(selectedView, file, currentFolderId)
+    runOperation(async () => {
+      setUploading(true)
+      try {
+        let uploadedFile
+        if (selectedView === 'omnidrive') {
+          uploadedFile = await omnidriveApi.uploadFile(file, currentPath)
+        } else {
+          if (!selectedAccountId) return
+          uploadedFile = await storageApi.uploadFile(selectedView, file, currentFolderId)
+        }
+        setFiles(prev => [{
+          id: uploadedFile.virtual_id || uploadedFile.id, name: uploadedFile.name,
+          mime_type: uploadedFile.mime_type, category: uploadedFile.category,
+          size: uploadedFile.size, size_formatted: uploadedFile.size_formatted,
+          modified_time: uploadedFile.modified_time, modified_time_formatted: uploadedFile.modified_time_formatted,
+          thumbnail_link: uploadedFile.thumbnail_link, web_view_link: uploadedFile.web_view_link,
+          is_folder: uploadedFile.is_folder, item_count: uploadedFile.item_count,
+          providers: uploadedFile.providers || [],
+        }, ...prev])
+        fileInput.value = ''
+      } catch (err) {
+        console.error('Failed to upload file:', err)
+        setError('Failed to upload file')
+      } finally {
+        setUploading(false)
       }
-      setFiles(prev => [{
-        id: uploadedFile.virtual_id || uploadedFile.id, name: uploadedFile.name,
-        mime_type: uploadedFile.mime_type, category: uploadedFile.category,
-        size: uploadedFile.size, size_formatted: uploadedFile.size_formatted,
-        modified_time: uploadedFile.modified_time, modified_time_formatted: uploadedFile.modified_time_formatted,
-        thumbnail_link: uploadedFile.thumbnail_link, web_view_link: uploadedFile.web_view_link,
-        is_folder: uploadedFile.is_folder, item_count: uploadedFile.item_count,
-        providers: uploadedFile.providers || [],
-      }, ...prev])
-      fileInput.value = ''
-    } catch (err) {
-      console.error('Failed to upload file:', err)
-      setError('Failed to upload file')
-    } finally {
-      setUploading(false)
-    }
+    })
   }
 
   // ── Create folder ────────────────────────────────────────────────
 
-  const handleCreateFolder = async () => {
+  const handleCreateFolder = () => {
     const name = newFolderName.trim()
     if (!name) return
     if (selectedView !== 'omnidrive' && !selectedAccountId) return
-    setCreatingFolder(true)
-    try {
-      let newFolder
-      if (selectedView === 'omnidrive') {
-        newFolder = await omnidriveApi.createFolder(name, currentPath)
-      } else {
-        newFolder = await storageApi.createFolder(selectedView, name, currentFolderId)
+    runOperation(async () => {
+      setCreatingFolder(true)
+      try {
+        let newFolder
+        if (selectedView === 'omnidrive') {
+          newFolder = await omnidriveApi.createFolder(name, currentPath)
+        } else {
+          newFolder = await storageApi.createFolder(selectedView, name, currentFolderId)
+        }
+        setFiles(prev => [{
+          id: newFolder.virtual_id || newFolder.id, name: newFolder.name,
+          mime_type: newFolder.mime_type, category: newFolder.category,
+          size: newFolder.size, size_formatted: newFolder.size_formatted,
+          modified_time: newFolder.modified_time, modified_time_formatted: newFolder.modified_time_formatted,
+          thumbnail_link: newFolder.thumbnail_link, web_view_link: newFolder.web_view_link,
+          is_folder: newFolder.is_folder, item_count: newFolder.item_count,
+          providers: newFolder.providers || [],
+        }, ...prev])
+        setNewFolderName('')
+        setShowNewFolderInput(false)
+      } catch (err) {
+        console.error('Failed to create folder:', err)
+        setError('Failed to create folder')
+      } finally {
+        setCreatingFolder(false)
       }
-      setFiles(prev => [{
-        id: newFolder.virtual_id || newFolder.id, name: newFolder.name,
-        mime_type: newFolder.mime_type, category: newFolder.category,
-        size: newFolder.size, size_formatted: newFolder.size_formatted,
-        modified_time: newFolder.modified_time, modified_time_formatted: newFolder.modified_time_formatted,
-        thumbnail_link: newFolder.thumbnail_link, web_view_link: newFolder.web_view_link,
-        is_folder: newFolder.is_folder, item_count: newFolder.item_count,
-        providers: newFolder.providers || [],
-      }, ...prev])
-      setNewFolderName('')
-      setShowNewFolderInput(false)
-    } catch (err) {
-      console.error('Failed to create folder:', err)
-      setError('Failed to create folder')
-    } finally {
-      setCreatingFolder(false)
-    }
+    })
   }
 
   // ── Navigation ──────────────────────────────────────────────────
@@ -299,51 +315,54 @@ export function ConnectedHomePage() {
   const handleContextMenu = (e, file) => setContextMenu({ x: e.clientX, y: e.clientY, file })
   const closeContextMenu = () => setContextMenu(null)
 
-  const handleRename = async (file) => {
+  const handleRename = (file) => {
     const newName = window.prompt('Enter new name:', file.name)
     if (!newName || newName.trim() === '' || newName.trim() === file.name) return
-    try {
-      if (selectedView === 'omnidrive') await omnidriveApi.renameItem(file.id, newName.trim())
-      else await storageApi.renameFile(selectedView, file.id, newName.trim())
-      fetchFiles()
-    } catch (err) { setError(`Failed to rename: ${err.message}`) }
+    runOperation(async () => {
+      try {
+        if (selectedView === 'omnidrive') await omnidriveApi.renameItem(file.id, newName.trim())
+        else await storageApi.renameFile(selectedView, file.id, newName.trim())
+        fetchFiles()
+      } catch (err) { setError(`Failed to rename: ${err.message}`) }
+    })
   }
 
-  const handleDelete = async (file) => {
+  const handleDelete = (file) => {
     const confirmed = window.confirm(`Are you sure you want to delete "${file.name}"?`)
     if (!confirmed) return
-    try {
-      if (selectedView === 'omnidrive') await omnidriveApi.deleteItem(file.id)
-      else await storageApi.deleteFile(selectedView, file.id)
-      setFiles(prev => prev.filter(f => f.id !== file.id))
-    } catch (err) { setError(`Failed to delete: ${err.message}`) }
+    runOperation(async () => {
+      try {
+        if (selectedView === 'omnidrive') await omnidriveApi.deleteItem(file.id)
+        else await storageApi.deleteFile(selectedView, file.id)
+        setFiles(prev => prev.filter(f => f.id !== file.id))
+      } catch (err) { setError(`Failed to delete: ${err.message}`) }
+    })
   }
 
-  const handleDownload = async (file) => {
-    let url
-    if (selectedView === 'omnidrive') url = omnidriveApi.getDownloadUrl(file.id)
-    else url = storageApi.getDownloadUrl(selectedView, file.id)
+  const handleDownload = (file) => {
+    runOperation(async () => {
+      let url
+      if (selectedView === 'omnidrive') url = omnidriveApi.getDownloadUrl(file.id)
+      else url = storageApi.getDownloadUrl(selectedView, file.id)
 
-    // For folders, request ZIP format
-    if (file.is_folder) {
-      url += '?format=zip'
-    }
+      if (file.is_folder) url += '?format=zip'
 
-    try {
-      const response = await fetch(url, { credentials: 'include' })
-      if (!response.ok) {
-        let errorMsg = `Download failed (HTTP ${response.status})`
-        try { const errorData = await response.json(); if (errorData.detail) errorMsg = errorData.detail } catch {}
-        throw new Error(errorMsg)
-      }
-      const blob = await response.blob()
-      const blobUrl = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = file.is_folder ? `${file.name}.zip` : file.name
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-      window.URL.revokeObjectURL(blobUrl)
-    } catch (err) { setError(`Failed to download "${file.name}": ${err.message}`) }
+      try {
+        const response = await fetch(url, { credentials: 'include' })
+        if (!response.ok) {
+          let errorMsg = `Download failed (HTTP ${response.status})`
+          try { const errorData = await response.json(); if (errorData.detail) errorMsg = errorData.detail } catch {}
+          throw new Error(errorMsg)
+        }
+        const blob = await response.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = file.is_folder ? `${file.name}.zip` : file.name
+        document.body.appendChild(a); a.click(); document.body.removeChild(a)
+        window.URL.revokeObjectURL(blobUrl)
+      } catch (err) { setError(`Failed to download "${file.name}": ${err.message}`) }
+    })
   }
 
   // ── Cut / Copy / Paste ──────────────────────────────────────────
@@ -450,6 +469,7 @@ export function ConnectedHomePage() {
                       else { const numVal = Number(val); setSelectedView(numVal); setSelectedAccountId(numVal); navigateToRoot() }
                     }}
                     className="content-header__select"
+                    disabled={isProcessing}
                   >
                     <option value="omnidrive"> OmniDrive</option>
                     {accounts.map(acc => (
@@ -516,7 +536,7 @@ export function ConnectedHomePage() {
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => setShowNewFolderInput(true)} className="content-header__toolbar-btn" disabled={!selectedAccountId && selectedView !== 'omnidrive'}>
+                    <button onClick={() => setShowNewFolderInput(true)} className="content-header__toolbar-btn" disabled={isProcessing || (!selectedAccountId && selectedView !== 'omnidrive')}>
                       <FolderPlus size={14} /> New Folder
                     </button>
                   )}
@@ -526,9 +546,9 @@ export function ConnectedHomePage() {
               {/* Upload */}
               {activeNav !== 'trash' && (
                 <div className="content-header__action">
-                  <label className={`content-header__toolbar-btn ${uploading ? 'content-header__toolbar-btn--uploading' : ''}`}>
+                  <label className={`content-header__toolbar-btn ${uploading ? 'content-header__toolbar-btn--uploading' : ''} ${isProcessing ? 'content-header__toolbar-btn--disabled' : ''}`}>
                     <Upload size={14} /> {uploading ? 'Uploading...' : 'Upload'}
-                    <input type="file" id="file-upload-main" style={{ display: 'none' }} onChange={uploadFile} />
+                    <input type="file" id="file-upload-main" style={{ display: 'none' }} onChange={uploadFile} disabled={isProcessing} />
                   </label>
                 </div>
               )}

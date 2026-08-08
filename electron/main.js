@@ -7,7 +7,7 @@
 
 import electron from 'electron'
 const { app, BrowserWindow, dialog, Menu } = electron
-import { spawn, execSync } from 'child_process'
+import { spawn, exec } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -42,18 +42,16 @@ const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 
 function killExistingBackend() {
   if (process.platform !== 'win32') return
-  try {
-    // Find PID using the port
-    const output = execSync(`netstat -ano | findstr :${BACKEND_PORT} | findstr LISTENING`, { encoding: 'utf8', timeout: 3000 })
-    const match = output.match(/LISTENING\s+(\d+)/)
+  // Use async exec so it doesn't block the window from appearing
+  exec(`netstat -ano | findstr :${BACKEND_PORT}`, { timeout: 5000 }, (err, stdout) => {
+    if (err || !stdout) return
+    const match = stdout.match(/:${BACKEND_PORT}\s+.*?\s+(\d+)/)
     if (match) {
       const pid = match[1]
       console.log(`[electron] Killing existing process on port ${BACKEND_PORT} (PID ${pid})`)
-      execSync(`taskkill /PID ${pid} /F /T`, { timeout: 3000 })
+      exec(`taskkill /PID ${pid} /F /T`, { timeout: 5000 }, () => {})
     }
-  } catch (err) {
-    // No existing process, or netstat/taskkill failed — ignore
-  }
+  })
 }
 
 function getBackendDir() {
