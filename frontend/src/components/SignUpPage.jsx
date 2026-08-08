@@ -80,14 +80,11 @@ export function SignUpPage() {
     setConnecting('google')
 
     try {
-      // Use backend's registered redirect URI (must match Google Cloud Console)
       const redirectUri = 'http://localhost:8000/auth/google/callback'
-      const { auth_url, state } = await authApi.startGoogleOAuth(redirectUri)
+      const frontendUrl = window.location.origin + window.location.pathname
+      const { auth_url, state } = await authApi.startGoogleOAuth(redirectUri, frontendUrl)
 
-      // Store state in sessionStorage for validation on callback
       sessionStorage.setItem('oauth_state', state)
-
-      // Redirect to Google OAuth
       window.location.href = auth_url
     } catch (err) {
       console.error('Failed to start Google OAuth:', err)
@@ -102,7 +99,8 @@ export function SignUpPage() {
 
     try {
       const redirectUri = 'http://localhost:8000/auth/microsoft/callback'
-      const { auth_url, state } = await authApi.startMicrosoftOAuth(redirectUri)
+      const frontendUrl = window.location.origin + window.location.pathname
+      const { auth_url, state } = await authApi.startMicrosoftOAuth(redirectUri, frontendUrl)
 
       sessionStorage.setItem('oauth_state_ms', state)
       window.location.href = auth_url

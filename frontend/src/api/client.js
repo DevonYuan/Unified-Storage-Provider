@@ -32,22 +32,24 @@ async function request(endpoint, options = {}) {
 }
 
 export const authApi = {
-  async startGoogleOAuth(redirectUri) {
+  async startGoogleOAuth(redirectUri, frontendUrl = '') {
     return request('/auth/oauth/start', {
       method: 'POST',
       body: {
         provider: 'google_drive',
         redirect_uri: redirectUri,
+        frontend_url: frontendUrl,
       },
     });
   },
 
-  async startMicrosoftOAuth(redirectUri) {
+  async startMicrosoftOAuth(redirectUri, frontendUrl = '') {
     return request('/auth/oauth/start', {
       method: 'POST',
       body: {
         provider: 'onedrive',
         redirect_uri: redirectUri,
+        frontend_url: frontendUrl,
       },
     });
   },

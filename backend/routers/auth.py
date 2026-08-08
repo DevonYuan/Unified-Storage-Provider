@@ -1,7 +1,33 @@
 """Authentication router for OmniDrive - OAuth flows for cloud providers."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
+
+
+def _js_redirect(url: str) -> HTMLResponse:
+    """Return an HTML page that navigates back to the Electron frontend.
+
+    Uses Electron's IPC (via preload script) to avoid Chromium's
+    cross-protocol redirect block (http→file://).
+    """
+    # Extract the hash from the target URL for the frontend route
+    hash_part = url.split("#")[1] if "#" in url else ""
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>OmniDrive</title>
+<style>body{{background:#0a0a0a;color:#fafafa;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}p{{font-size:14px;color:#8a8a8a}}</style></head>
+<body>
+<p>Authentication complete — returning to OmniDrive…</p>
+<script>
+(function() {{
+  if (window.omnidrive && window.omnidrive.navigateTo) {{
+    window.omnidrive.navigateTo('{hash_part}');
+  }} else {{
+    window.location.href = 'http://localhost:5173/#/{hash_part}';
+  }}
+}})();
+</script>
+</body></html>"""
+    return HTMLResponse(content=html)
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, HttpUrl
 from typing import Optional
@@ -34,7 +60,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 class OAuthStartRequest(BaseModel):
     provider: ProviderType
-    redirect_uri: HttpUrl
+    redirect_uri: str
+    frontend_url: str = ""
 
 
 class OAuthStartResponse(BaseModel):
@@ -66,11 +93,9 @@ def start_oauth(request: OAuthStartRequest):
     Returns the authorization URL and state parameter.
     """
     if request.provider == ProviderType.GOOGLE_DRIVE:
-        redirect_uri = str(request.redirect_uri)
-        auth_url, state = build_authorization_url(redirect_uri)
+        auth_url, state = build_authorization_url(request.redirect_uri, request.frontend_url)
     elif request.provider == ProviderType.ONEDRIVE:
-        redirect_uri = str(request.redirect_uri)
-        auth_url, state = build_ms_auth_url(redirect_uri)
+        auth_url, state = build_ms_auth_url(request.redirect_uri, request.frontend_url)
     else:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -88,12 +113,14 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
     Exchanges authorization code for tokens and stores them securely.
     """
     # Validate state parameter (CSRF protection)
-    redirect_uri = validate_state(state)
-    if not redirect_uri:
+    state_data = validate_state(state)
+    if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth state parameter"
         )
+    redirect_uri = state_data["redirect_uri"]
+    frontend_url = state_data.get("frontend_url", "http://localhost:5173")
 
     # Verify the redirect URI matches our backend callback URL
     config = get_config()
@@ -155,18 +182,16 @@ async def google_oauth_callback(code: str, state: str, db: Session = Depends(get
         db.commit()
         db.refresh(account)
 
-        # Redirect to home for reconnects, signup for new accounts
-        frontend_url = "http://localhost:5173/home" if existing_account else "http://localhost:5173/signup"
-        return RedirectResponse(url=frontend_url)
+        # Redirect back to frontend (works for both dev server and packaged Electron)
+        target = f"{frontend_url}#/home" if existing_account else f"{frontend_url}#/signup"
+        return _js_redirect(target)
 
     except GoogleOAuthError as e:
-        # Redirect to frontend with error
-        frontend_url = f"http://localhost:5173/signup?error={e}"
-        return RedirectResponse(url=frontend_url)
+        target = f"{frontend_url}#/signup?error={e}"
+        return _js_redirect(target)
     except Exception as e:
-        # Redirect to frontend with error
-        frontend_url = f"http://localhost:5173/signup?error=OAuth callback failed: {str(e)}"
-        return RedirectResponse(url=frontend_url)
+        target = f"{frontend_url}#/signup?error=OAuth callback failed: {str(e)}"
+        return _js_redirect(target)
 
 
 @router.get("/microsoft/callback")
@@ -177,12 +202,14 @@ async def microsoft_oauth_callback(code: str, state: str, db: Session = Depends(
     Exchanges authorization code for tokens and stores them securely.
     """
     # Validate state parameter (CSRF protection)
-    redirect_uri = validate_ms_state(state)
-    if not redirect_uri:
+    state_data = validate_ms_state(state)
+    if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired OAuth state parameter"
         )
+    redirect_uri = state_data["redirect_uri"]
+    frontend_url = state_data.get("frontend_url", "http://localhost:5173")
 
     # Verify the redirect URI matches our backend callback URL
     config = get_config()
@@ -248,16 +275,16 @@ async def microsoft_oauth_callback(code: str, state: str, db: Session = Depends(
         db.commit()
         db.refresh(account)
 
-        # Redirect to home for reconnects, signup for new accounts
-        frontend_url = "http://localhost:5173/home" if existing_account else "http://localhost:5173/signup"
-        return RedirectResponse(url=frontend_url)
+        # Redirect back to frontend (works for both dev server and packaged Electron)
+        target = f"{frontend_url}#/home" if existing_account else f"{frontend_url}#/signup"
+        return _js_redirect(target)
 
     except MicrosoftOAuthError as e:
-        frontend_url = f"http://localhost:5173/signup?error={e}"
-        return RedirectResponse(url=frontend_url)
+        target = f"{frontend_url}#/signup?error={e}"
+        return _js_redirect(target)
     except Exception as e:
-        frontend_url = f"http://localhost:5173/signup?error=OAuth callback failed: {str(e)}"
-        return RedirectResponse(url=frontend_url)
+        target = f"{frontend_url}#/signup?error=OAuth callback failed: {str(e)}"
+        return _js_redirect(target)
 
 
 @router.get("/accounts", response_model=AccountListResponse)

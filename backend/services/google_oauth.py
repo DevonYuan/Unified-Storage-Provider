@@ -24,7 +24,7 @@ def _cleanup_expired_states():
         del _oauth_state_cache[state]
 
 
-def build_authorization_url(redirect_uri: str) -> tuple[str, str]:
+def build_authorization_url(redirect_uri: str, frontend_url: str = "") -> tuple[str, str]:
     """
     Build Google OAuth authorization URL.
 
@@ -37,10 +37,11 @@ def build_authorization_url(redirect_uri: str) -> tuple[str, str]:
     # Generate secure state parameter
     state = secrets.token_urlsafe(32)
 
-    # Store state with redirect URI for validation later
+    # Store state with redirect URI and frontend URL for validation later
     _cleanup_expired_states()
     _oauth_state_cache[state] = {
         "redirect_uri": redirect_uri,
+        "frontend_url": frontend_url,
         "created_at": time.time(),
     }
 
@@ -58,18 +59,15 @@ def build_authorization_url(redirect_uri: str) -> tuple[str, str]:
     return auth_url, state
 
 
-def validate_state(state: str) -> Optional[str]:
+def validate_state(state: str) -> Optional[dict]:
     """
-    Validate OAuth state parameter and return associated redirect URI.
+    Validate OAuth state parameter and return stored data dict.
 
     Returns:
-        redirect_uri if valid, None if invalid or expired
+        dict with redirect_uri, frontend_url if valid, None if invalid or expired
     """
     _cleanup_expired_states()
-    data = _oauth_state_cache.get(state)
-    if data:
-        return data["redirect_uri"]
-    return None
+    return _oauth_state_cache.pop(state, None)
 
 
 async def exchange_code_for_tokens(code: str, redirect_uri: str) -> Dict[str, Any]:

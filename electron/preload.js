@@ -6,9 +6,13 @@
  * do not reliably support ESM imports.
  */
 
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('omnidrive', {
   platform: process.platform,
   isElectron: true,
+  // Called by the OAuth callback page to navigate back to the frontend.
+  // Needed because Chromium blocks http→file:// redirects.
+  navigateToHome: () => ipcRenderer.send('navigate-to-home'),
+  navigateTo: (hash) => ipcRenderer.send('navigate-to', hash),
 })

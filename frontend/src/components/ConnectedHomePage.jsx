@@ -288,9 +288,10 @@ export function ConnectedHomePage() {
       const redirectUri = provider === 'google'
         ? `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/auth/google/callback`
         : `${import.meta.env.VITE_API_BASE || 'http://localhost:8000'}/auth/microsoft/callback`
+      const frontendUrl = window.location.origin + window.location.pathname
       const { auth_url, state } = provider === 'google'
-        ? await authApi.startGoogleOAuth(redirectUri)
-        : await authApi.startMicrosoftOAuth(redirectUri)
+        ? await authApi.startGoogleOAuth(redirectUri, frontendUrl)
+        : await authApi.startMicrosoftOAuth(redirectUri, frontendUrl)
       sessionStorage.setItem(provider === 'google' ? 'oauth_state' : 'oauth_state_ms', state)
       window.location.href = auth_url
     } catch (err) {

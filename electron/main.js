@@ -6,8 +6,8 @@
  */
 
 import electron from 'electron'
-const { app, BrowserWindow, dialog, Menu } = electron
-import { spawn, exec } from 'child_process'
+const { app, BrowserWindow, dialog, Menu, ipcMain } = electron
+import { spawn, exec, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -166,7 +166,11 @@ function stopBackend() {
     console.log('[electron] Stopping backend...')
     stoppingBackend = true
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'])
+      try {
+        execSync(`taskkill /PID ${backendProcess.pid} /F /T`, { timeout: 5000 })
+      } catch (err) {
+        console.log('[electron] taskkill returned:', err.message)
+      }
     } else {
       backendProcess.kill('SIGTERM')
     }
@@ -240,6 +244,19 @@ app.whenReady().then(async () => {
   }
 
   console.log('[electron] App ready — backend and frontend both running')
+
+  // IPC: OAuth callback pages call this to navigate back to the frontend
+  ipcMain.on('navigate-to-home', () => {
+    if (mainWindow) {
+      mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'))
+    }
+  })
+  ipcMain.on('navigate-to', (_event, hash) => {
+    if (mainWindow) {
+      const frontendPath = path.join(__dirname, '..', 'frontend', 'dist', 'index.html')
+      mainWindow.loadFile(frontendPath, { hash: hash || '' })
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
