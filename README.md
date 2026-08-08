@@ -50,10 +50,10 @@ Implement the core functionality that merges the storage from both providers int
 ### Phase 5 - Polishing the User Experience 
 Experimenting with different aesthetics, debugging, and updating the documents to reflect changes to the plans throughout the implementation. 
 
-## Phase 6 - Packaging as a Desktop App
+### Phase 6 - Packaging as a Desktop App
 Bundle the backend into a standalone executable with PyInstaller (so users don't need Python installed) and wrap the frontend in Electron. Electron spawns the backend as a subprocess on startup, and the React frontend communicates with it over localhost — no remote servers, no cloud dependencies. The OAuth flow required special handling since Chromium blocks redirects between `http://` and `file://` origins, solved by using Electron's IPC bridge to let the main process handle navigation directly. The app ships as an NSIS installer for Windows, with the Electron configuration structured so that adding macOS and Linux targets is straightforward later.
 
-### Contact Info 
+## Contact Info 
 Email: devon.yuan@outlook.com <br>
 Phone: 236-458-2221 <br>
 LinkedIn: [Click Here](https://www.linkedin.com/in/devon-yuan-361575340/) <br>
