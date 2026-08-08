@@ -37,6 +37,7 @@ app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
 // ── Backend process ──────────────────────────────────────────────────────
 
 let backendProcess = null
+let stoppingBackend = false
 const BACKEND_PORT = 8000
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
 
@@ -132,13 +133,14 @@ function startBackend() {
 
   backendProcess.on('close', (code) => {
     console.log(`[electron] Backend exited with code ${code}`)
-    if (code !== 0 && code !== null) {
+    if (!stoppingBackend && code !== 0 && code !== null) {
       dialog.showErrorBox(
         'Backend Crashed',
         `The OmniDrive backend exited unexpectedly (code ${code}).\nCheck the console for details.`
       )
     }
     backendProcess = null
+    stoppingBackend = false
   })
 }
 
@@ -162,6 +164,7 @@ async function waitForBackend(maxRetries = 25, delay = 400) {
 function stopBackend() {
   if (backendProcess) {
     console.log('[electron] Stopping backend...')
+    stoppingBackend = true
     if (process.platform === 'win32') {
       spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'])
     } else {
