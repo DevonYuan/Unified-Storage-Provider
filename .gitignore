@@ -1,29 +1,23 @@
-# Environment variables
+# Environment variables 
 .env
 
-# Claude setup
-.claude/
-
-# Releases
+# Build outputs (generated, not source)
 release/
 
-# Compiled python caches 
+# backend build outputs 
+backend/dist/
+backend/build/
 backend/__pycache__/
 backend/routers/__pycache__/
 backend/services/__pycache__/
+frontend/dist/
 
-# Bundled backend 
-backend/dist/
-backend/build
-backend/omnidrive-backend.exe
-backend/omnidrive-backend.spec
-
-# Server log 
+# Logs for debugging 
 backend/server.log
 
-# Node modules 
+# Dependencies
+node_modules/
 frontend/node_modules/
-node_modules
 
-# Packaging as a dekstop app
-electron/
+# Tool configs
+.claude/
