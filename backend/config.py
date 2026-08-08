@@ -1,14 +1,20 @@
 """Configuration management for OmniDrive backend."""
 
 import os
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import List
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-# Load .env from project root (one level above backend/)
-_env_path = Path(__file__).resolve().parent.parent / ".env"
+# Load .env — resolve path differently for PyInstaller vs source runs
+if getattr(sys, 'frozen', False):
+    # Running as a PyInstaller one-file exe — .env lives next to the exe
+    _env_path = Path(sys.executable).parent / ".env"
+else:
+    # Running from source — .env is one level above backend/
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env_path, override=True)
 
 

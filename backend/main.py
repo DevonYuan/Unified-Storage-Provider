@@ -25,7 +25,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration for local frontend development
+# CORS configuration for local frontend development and packaged Electron
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -36,6 +36,8 @@ app.add_middleware(
         "http://192.168.1.166:5173",
         "http://172.31.224.1:5173",
         "http://172.29.176.1:5173",
+        # Packaged Electron loads frontend via file://, browser sends Origin: null
+        "null",
     ],
     allow_credentials=True,
     allow_methods=["*"],

@@ -7,7 +7,7 @@
 
 import electron from 'electron'
 const { app, BrowserWindow, dialog, Menu } = electron
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -15,11 +15,46 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
 
+// ── Single-instance lock ─────────────────────────────────────────────────
+
+let mainWindow = null
+
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // Another instance is already running — quit this one
+  app.quit()
+}
+
+app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+  // Someone tried to launch a second copy — focus the existing window
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  }
+})
+
 // ── Backend process ──────────────────────────────────────────────────────
 
 let backendProcess = null
 const BACKEND_PORT = 8000
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`
+
+function killExistingBackend() {
+  if (process.platform !== 'win32') return
+  try {
+    // Find PID using the port
+    const output = execSync(`netstat -ano | findstr :${BACKEND_PORT} | findstr LISTENING`, { encoding: 'utf8', timeout: 3000 })
+    const match = output.match(/LISTENING\s+(\d+)/)
+    if (match) {
+      const pid = match[1]
+      console.log(`[electron] Killing existing process on port ${BACKEND_PORT} (PID ${pid})`)
+      execSync(`taskkill /PID ${pid} /F /T`, { timeout: 3000 })
+    }
+  } catch (err) {
+    // No existing process, or netstat/taskkill failed — ignore
+  }
+}
 
 function getBackendDir() {
   if (isDev) {
@@ -109,7 +144,7 @@ function startBackend() {
   })
 }
 
-async function waitForBackend(maxRetries = 40, delay = 500) {
+async function waitForBackend(maxRetries = 25, delay = 400) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await fetch(`${BACKEND_URL}/health`)
@@ -140,8 +175,6 @@ function stopBackend() {
 
 // ── Window ───────────────────────────────────────────────────────────────
 
-let mainWindow = null
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -155,18 +188,20 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    show: false,
+    show: true,
   })
 
   // Load the frontend
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'))
+    const frontendPath = path.join(__dirname, '..', 'frontend', 'dist', 'index.html')
+    console.log(`[electron] Loading frontend from: ${frontendPath}`)
+    mainWindow.loadFile(frontendPath)
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error(`[electron] Page load failed: ${errorCode} - ${errorDescription}`)
   })
 
   mainWindow.on('closed', () => {
@@ -177,7 +212,16 @@ function createWindow() {
 // ── App lifecycle ────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  // If we didn't get the single-instance lock, quit already happened
+  if (!gotTheLock) return
+
   Menu.setApplicationMenu(null)  // Remove default menu bar
+
+  // Show the window immediately so the user sees something
+  createWindow()
+
+  // Start backend in parallel — the frontend already handles API not being ready
+  killExistingBackend()
   startBackend()
 
   const backendReady = await waitForBackend()
@@ -194,7 +238,7 @@ app.whenReady().then(async () => {
     return
   }
 
-  createWindow()
+  console.log('[electron] App ready — backend and frontend both running')
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

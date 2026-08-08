@@ -9,21 +9,24 @@ directories:
   buildResources: build
 
 files:
+  - from: frontend/dist
+    to: frontend/dist
+    filter:
+      - "**/*"
   - electron/**/*
-  - frontend/dist/**/*
   - package.json
 
 extraResources:
-  - from: backend/
-    to: backend/
-    filter:
-      - "**/*"
-      - "!__pycache__/**"
-      - "!*.pyc"
+  - from: backend/dist/omnidrive-backend.exe
+    to: backend/omnidrive-backend.exe
+  - from: ".env"
+    to: backend/.env
 
 win:
   target:
     - target: portable
       arch: [x64]
+  sign: null
+  signAndEditExecutable: false
 
 compression: normal

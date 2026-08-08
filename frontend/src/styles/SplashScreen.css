@@ -1,0 +1,58 @@
+.splash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #0a0a0a;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
+
+.splash__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px;
+}
+
+.splash__logo {
+  width: 56px;
+  height: 56px;
+  background: #0d0d0d;
+  border: 1px solid #1f1f1f;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+}
+
+.splash__title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fafafa;
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.splash__loader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.splash__spinner {
+  color: #22c55e;
+  animation: splash-spin 1s linear infinite;
+}
+
+.splash__status {
+  font-size: 14px;
+  color: #8a8a8a;
+}
+
+@keyframes splash-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
